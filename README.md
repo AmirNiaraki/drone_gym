@@ -1,4 +1,4 @@
 # drone_gym requirements
 
-opencv-python
+opencv-python\
 stable_baseline3
