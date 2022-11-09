@@ -139,7 +139,7 @@ class droneEnv():
         return loc
     
     def close(self):
-        self.thread.join()
+        self.imager_thread_name.join()
 ### method receives frame as np array adds a column the end that represent battery level    
     def concat_battery(self):
         input_frame=self.fetch_frame()
@@ -172,7 +172,7 @@ frame2=env.concat_battery()
 
 # cv2.imwrite('without battery', frame1)
 cv2.imwrite('withB.png', frame2)
-# env.close()
+env.close()
 exit()
 ## closing all the threads except main
 # main_thread = threading.current_thread()
