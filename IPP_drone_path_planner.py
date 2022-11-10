@@ -36,8 +36,8 @@ WORLD_ZS=[60,100]
 
 SEEDS=200
 square_size_range=(1,10)
-FRAME_W=700
-FRAME_H=500
+FRAME_W=350
+FRAME_H=250
 FOV_X=60/2 #degrees for halve of the field of view horizontaly
 FOV_Y=47/2 #degrees for halve of the field of view verticaly
 FULL_BATTERY=100
@@ -46,7 +46,7 @@ PADDING=100
 FPS=30
 ### the padded area of the world is were the drone cannot go to but may appear in the frame
 
-class droneEnv():
+class droneEnv(gym.Env):
     
     def __init__(self, name):
         super(droneEnv, self).__init__()
@@ -55,7 +55,10 @@ class droneEnv():
         self.location=init_location
         self.world=self.world_genertor()
         self.battery=FULL_BATTERY # [x,y,z,] m
-        
+        self.done=False
+        self.reward=0
+        self.total_reward=0
+        self.step_count=0
         
         if self.name=='cont':
             self.observation_space = Box(low=0, high=255,
@@ -87,7 +90,6 @@ class droneEnv():
          # self.prev_actions.append(action)
          # action=action/FPS
          # for i in range (1,FPS+1):
-                          
         if action[0]<0:
             self.location[0]=max(self.location[0]+action[0], WORLD_XS[0])  
         else:
@@ -101,16 +103,31 @@ class droneEnv():
         else:
             self.location[2]=min(self.location[2]+action[2], WORLD_ZS[1])
              
-             
-        self.reward= -self.move_cost()
+        self.reward=-self.move_cost()
          
         if self.battery<1:
+             self.reward-=10
              self.done=True
+             env.close()
          
         observation=self.fetch_frame()
         
+            
+        self.reward+=self.fetch_anomaly()
+        self.total_reward+=self.reward
+        self.step_count+=1
+        # if self.fetch_anomaly()>0:
+        #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
+        #     print('Total rewards is:', self.total_reward)
+        self.reward.astype(np.float32)
+        info={}
+
+        # self.steps_taken=
         
-        return observation
+        # self.reward=
+        
+        
+        return observation, self.reward, self.done, info
  
          
          
@@ -118,26 +135,20 @@ class droneEnv():
 ###############################################################################
     
     def reset(self):
-        self.world=self.world_genertor()
-        self.state=init_state # only for discrete obs space
-        self.battery=FULL_BATTERY # [x,y,z,] m
-        ###for COARSE Coding there is an auxiliary function to get location from state
-        # self.location=self.loc_from_state()
         self.location=init_location
+        self.world=self.world_genertor()
+        self.battery=FULL_BATTERY # [x,y,z,] m
+        self.reward=0
+        self.total_reward=0
+        self.step_count=0
+        ###for COARSE Coding there is an auxiliary function to get location from state
         self.prev_reward=0
         self.score = 0 
         self.done = False
-        # frame=self.fetch_frame()
-        
-        
-### create observation:
-        # observation = [x,y,z,frame] + list(self.prev_actions)
-        # observation = np.array(observation)        
-       
-        
-        # Reset shower time
-        # self.shower_length = 60 
-        return self.state
+
+        observation=self.fetch_frame()
+
+        return observation
 
     
 
@@ -162,20 +173,40 @@ class droneEnv():
     
     def update_frame (self):
         self.imager_thread_name=threading.current_thread()
-        print('this thread is still running!')
+        
         while True:
-            visible_x=tan(radians(FOV_X))*2*self.location[2]
-            visible_y=tan(radians(FOV_Y))*2*self.location[2]
-            world_img=np.uint8((1-self.world)*255)
+            self.visible_x=tan(radians(FOV_X))*2*self.location[2]
+            self.visible_y=tan(radians(FOV_Y))*2*self.location[2]
+            self.world_img=np.uint8((1-self.world)*255)
             ### take snap of the sim based on location [x,y,z]
-            crop=world_img[int(-visible_y/2+self.location[1]):int(visible_y/2+self.location[1]), int(-visible_x/2+self.location[0]):int(visible_x/2+self.location[0])]
+            ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
+            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
             resized=cv2.resize(crop, (FRAME_W, FRAME_H))
             added_battery=self.concat_battery(resized)
             self.frame=added_battery
+            if self.done==True:
+                break
+                
+        print('Frame Update stopping...  ',  self.imager_thread_name)
 
 
     def fetch_frame(self):
+        
         return self.frame
+    
+    
+    def fetch_anomaly(self):
+        observation=self.fetch_frame()
+        nobat=observation[0:FRAME_H,0:FRAME_W]
+        
+        score=FRAME_H*FRAME_W-np.sum(nobat/255, dtype=np.int32)
+        
+        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
+        return score
+
+        
+        
 
     def loc_from_state(self):
         state_x_size=(WORLD_XS[1]-WORLD_XS[0])/STATES_X
@@ -186,6 +217,8 @@ class droneEnv():
         return loc
     
     def close(self):
+        self.done=True
+        time.sleep(0.1)
         self.imager_thread_name.join()
 ### method receives frame as np array adds a column the end that represent battery level    
     def concat_battery(self, input_frame):
@@ -213,6 +246,7 @@ class droneEnv():
 
 env=droneEnv('cont')
 
+
 # exit()
 # W=env.world_genertor()
 # cv2.imwrite('withB.png', W)
@@ -237,29 +271,36 @@ env=droneEnv('cont')
 
 # exit()
 ### imshow as movie
-counter=1
-for i in range(0,1000):
-    try:
-        # env.location=[100+i,100,60]
-        print(i)
-        obs=env.step([1,1,10])
-        # frame1=env.fetch_frame()
-        # cv2.imshow('drone view', frame1)
-        cv2.imshow('drone view', obs)
-        time.sleep(0.033)
+# counter=1
+# for i in range(0,1000):
+#     try:
+#         # env.location=[100+i,100,60]
+
+#         obs=env.step([10,5,0])
+#         world_img=env.world_img
         
-    except:
-        print('frame is not available')
-        counter=counter+1
-        if counter==20:
-            break
+#         # frame1=env.fetch_frame()
+#         # cv2.imshow('drone view', frame1)
+#         gray_BGR = cv2.cvtColor(world_img, cv2.COLOR_GRAY2BGR)
+#         # print(env.boundaries[0],env.boundaries[2],env.boundaries[1],env.boundaries[1])
+#         img=cv2.rectangle(gray_BGR, (env.boundaries[2],env.boundaries[0]),(env.boundaries[3],env.boundaries[1]),(255, 0, 0),5)
+
+#         cv2.imshow('World view', img)
+#         cv2.imshow('drone view', obs)
+#         time.sleep(0.5)
+        
+#     except:
+#         # print('frame is not available')
+#         counter=counter+1
+#         if counter==2000:
+#             break
        
-    if cv2.waitKey(1)==ord('q'):
-        # env.close()
-        # cam2.capture.release()
-        cv2.destroyAllWindows()
-        exit(1)
-        break        
+#     if cv2.waitKey(1)==ord('q'):
+#         env.close()
+#         # cam2.capture.release()
+#         cv2.destroyAllWindows()
+#         exit(1)
+#         break        
         
         
         
