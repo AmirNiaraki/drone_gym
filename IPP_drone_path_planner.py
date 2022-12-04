@@ -20,50 +20,60 @@ import threading
 from multiprocessing  import Process
 from sys import exit
 import time
+import json
+from configurations import Configs
+import pickle
 
 
-STATES_X=100
-STATES_Y=100
-STATES_Z=1
-init_state=[1,1,1]
-init_location=[100,100,60]
-### lets define a 1000 m * 250 m = 60 acres world
-### lets assume the flight altitude can vary between 60 to 100 m
-### The world generates square patches with sizes ranging between (1,10)
-WORLD_XS=[100,1900]
-WORLD_YS=[100,900]
-WORLD_ZS=[60,100]
+# STATES_X=100
+# STATES_Y=100
+# STATES_Z=1
+# init_state=[1,1,1]
+# init_location=[100,100,60]
+# ### lets define a 1000 m * 250 m = 60 acres world
+# ### lets assume the flight altitude can vary between 60 to 100 m
+# ### The world generates square patches with sizes ranging between (1,10)
+# WORLD_XS=[100,1900]
+# WORLD_YS=[100,900]
+# WORLD_ZS=[60,100]
 
-SEEDS=200
-square_size_range=(1,10)
-FRAME_W=350
-FRAME_H=250
-FOV_X=60/2 #degrees for halve of the field of view horizontaly
-FOV_Y=47/2 #degrees for halve of the field of view verticaly
-FULL_BATTERY=100
-MAX_SPEED=20 
-PADDING=100
-FPS=30
+# SEEDS=200
+# square_size_range=(1,10)
+# FRAME_W=350
+# FRAME_H=250
+# FOV_X=60/2 #degrees for halve of the field of view horizontaly
+# FOV_Y=47/2 #degrees for halve of the field of view verticaly
+# FULL_BATTERY=100
+# MAX_SPEED=20 
+# PADDING=100
+# FPS=30
 ### the padded area of the world is were the drone cannot go to but may appear in the frame
 
 class droneEnv(gym.Env):
     
-    def __init__(self, name):
+    def __init__(self, name, render=True):
         super(droneEnv, self).__init__()
-        
+        self.cfg=Configs()
         self.name=name
-        self.location=init_location
-        self.world=self.world_genertor()
-        self.battery=FULL_BATTERY # [x,y,z,] m
+        self.render=render
+
+        self.location=self.cfg.init_location
+        # self.world=self.world_genertor()
+        self.world=np.load('test_world.npy')
+        # np.save('test_world', self.world)
+        
+        self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.done=False
         self.reward=0
         self.total_reward=0
         self.step_count=0
+        self.battery_inloop=False
+        
         
         if self.name=='cont':
             self.observation_space = Box(low=0, high=255,
-                                    shape=(FRAME_H, FRAME_W+1), dtype=np.uint8)
-            self.action_space=Box(low=-MAX_SPEED, high=MAX_SPEED, shape=(3,), dtype=np.float32)
+                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float32)
         if self.name=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
@@ -91,27 +101,45 @@ class droneEnv(gym.Env):
          # action=action/FPS
          # for i in range (1,FPS+1):
         if action[0]<0:
-            self.location[0]=max(self.location[0]+action[0], WORLD_XS[0])  
+            self.location[0]=max(self.location[0]+action[0], self.cfg.WORLD_XS[0])  
         else:
-            self.location[0]=min(self.location[0]+action[0], WORLD_XS[1])
+            self.location[0]=min(self.location[0]+action[0], self.cfg.WORLD_XS[1])
         if action[1]<0:
-            self.location[1]=max(self.location[1]+action[1], WORLD_YS[0])  
+            self.location[1]=max(self.location[1]+action[1], self.cfg.WORLD_YS[0])  
         else:
-            self.location[1]=min(self.location[1]+action[1], WORLD_YS[1])
+            self.location[1]=min(self.location[1]+action[1], self.cfg.WORLD_YS[1])
         if action[2]<0:
-            self.location[2]=max(self.location[2]+action[2], WORLD_ZS[0])  
+            self.location[2]=max(self.location[2]+action[2],self.cfg. WORLD_ZS[0])  
         else:
-            self.location[2]=min(self.location[2]+action[2], WORLD_ZS[1])
+            self.location[2]=min(self.location[2]+action[2], self.cfg.WORLD_ZS[1])
              
         self.reward=-self.move_cost()
          
         if self.battery<1:
              self.reward-=10
              self.done=True
-             env.close()
+             self.close()
          
         observation=self.fetch_frame()
-        
+        # print(observation)
+        if self.render==True and self.done==False:
+            try:
+                cv2.imshow('just fetched', observation)
+                _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
+                img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+                cv2.imshow('World view', img)
+                time.slepp(1)
+                
+            except:
+                pass
+            if cv2.waitKey(1)==ord('q'):
+                print('Q hit:')
+                self.done=True
+                
+                self.close()
+
+            
+        # exit()
             
         self.reward+=self.fetch_anomaly()
         self.total_reward+=self.reward
@@ -135,9 +163,10 @@ class droneEnv(gym.Env):
 ###############################################################################
     
     def reset(self):
-        self.location=init_location
+        self.location=self.cfg.init_location
         self.world=self.world_genertor()
-        self.battery=FULL_BATTERY # [x,y,z,] m
+        
+        self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
         self.total_reward=0
         self.step_count=0
@@ -147,45 +176,48 @@ class droneEnv(gym.Env):
         self.done = False
 
         observation=self.fetch_frame()
-
         return observation
 
     
 
         # return self.state, reward, done, info        
 ### Auxiliary functions #######################################################        
-    def world_genertor(self, seeds=SEEDS, size=(WORLD_YS[1]+PADDING,WORLD_XS[1]+PADDING)):
-         self.world=np.zeros(size, dtype=int)
-         square_corners=[]
-         for s in range(0,seeds):
+    def world_genertor(self):
+        seeds=self.cfg.SEEDS
+        size=(self.cfg.WORLD_YS[1]+self.cfg.PADDING,self.cfg.WORLD_XS[1]+self.cfg.PADDING)
+        self.world=np.zeros(size, dtype=int)
+        square_corners=[]
+        for s in range(0,seeds):
              ### corner of each square corner=[x,y]
-             corner=[random.randint(PADDING,WORLD_XS[1]),random.randint(PADDING,WORLD_YS[1])]
+             corner=[random.randint(self.cfg.PADDING,self.cfg.WORLD_XS[1]),random.randint(self.cfg.PADDING,self.cfg.WORLD_YS[1])]
              ### list of all square corners
              square_corners.append(corner)
-             square_size=random.randint(square_size_range[0],square_size_range[1])
+             square_size=random.randint(self.cfg.square_size_range[0],self.cfg.square_size_range[1])
              for i in range(0,square_size):
                  for j in range(0,square_size):
                      try:
                          self.world[corner[1]+j][corner[0]+i]=1
                      except:
                          pass
-         return self.world
+        return self.world
     
     def update_frame (self):
         self.imager_thread_name=threading.current_thread()
-        
-        while True:
-            self.visible_x=tan(radians(FOV_X))*2*self.location[2]
-            self.visible_y=tan(radians(FOV_Y))*2*self.location[2]
+        print('top of the thread')
+        while self.done==False:
+            self.visible_x=tan(radians(self.cfg.FOV_X))*2*self.location[2]
+            self.visible_y=tan(radians(self.cfg.FOV_Y))*2*self.location[2]
             self.world_img=np.uint8((1-self.world)*255)
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
-            resized=cv2.resize(crop, (FRAME_W, FRAME_H))
+            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
             added_battery=self.concat_battery(resized)
             self.frame=added_battery
+
             if self.done==True:
+                # cv2.destroyAllWindows()
                 break
                 
         print('Frame Update stopping...  ',  self.imager_thread_name)
@@ -198,33 +230,38 @@ class droneEnv(gym.Env):
     
     def fetch_anomaly(self):
         observation=self.fetch_frame()
-        nobat=observation[0:FRAME_H,0:FRAME_W]
+        nobat=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
         
-        score=FRAME_H*FRAME_W-np.sum(nobat/255, dtype=np.int32)
-        
+        score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(nobat/255, dtype=np.int32)
+        ### removing the detected objects from the world!!!
         self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
+        
         return score
 
         
         
 
     def loc_from_state(self):
-        state_x_size=(WORLD_XS[1]-WORLD_XS[0])/STATES_X
-        state_y_size=(WORLD_YS[1]-WORLD_YS[0])/STATES_Y
-        state_z_size=(WORLD_YS[1]-WORLD_YS[0])/STATES_Z
-        loc=[WORLD_XS[0]+state_x_size*(self.state[0]-1), WORLD_YS[0]+state_y_size*(self.state[1]-1), WORLD_ZS[0]+state_z_size*(self.state[2]-1)]
+        state_x_size=(self.cfg.WORLD_XS[1]-self.cfg.WORLD_XS[0])/self.cfg.STATES_X
+        state_y_size=(self.cfg.WORLD_YS[1]-self.cfg.WORLD_YS[0])/self.cfg.STATES_Y
+        state_z_size=(self.cfg.WORLD_YS[1]-self.cfg.WORLD_YS[0])/self.cfg.STATES_Z
+        loc=[self.cfg.WORLD_XS[0]+state_x_size*(self.state[0]-1), self.cfg.WORLD_YS[0]+state_y_size*(self.state[1]-1), self.cfg.WORLD_ZS[0]+state_z_size*(self.state[2]-1)]
         ### returns a location=[x,y,z] where states=[1,1,1] corresponds to loc=[100,100,60] meteres
         return loc
     
     def close(self):
+        print('trying to close the env and destroy windows...')
         self.done=True
         time.sleep(0.1)
         self.imager_thread_name.join()
+        cv2.destroyAllWindows()
+        
+        
 ### method receives frame as np array adds a column the end that represent battery level    
     def concat_battery(self, input_frame):
-        full_pixels=np.zeros([int(FRAME_H*self.battery/100), 1])
+        full_pixels=np.zeros([int(self.cfg.FRAME_H*self.battery/100), 1])
         full_pixels.astype(int)
-        empty_pixels=(np.zeros([FRAME_H-int(FRAME_H*self.battery/100),1])+1)*255
+        empty_pixels=(np.zeros([self.cfg.FRAME_H-int(self.cfg.FRAME_H*self.battery/100),1])+1)*255
         empty_pixels.astype(int)
 
         # print('len of full pixs: ',str(len(full_pixles())), 'empty pixs: ', str(len(empty_pixels)))
@@ -237,14 +274,15 @@ class droneEnv(gym.Env):
     def move_cost(self):
 ### method to find the step cost based on drag force, for now everything costs 1
         self.cost=1
-        self.battery=self.battery-1
+        if self.battery_inloop==True:
+            self.battery=self.battery-1
         return self.cost
         
         
          
             
 
-env=droneEnv('cont')
+# env=droneEnv('cont', render=True)
 
 
 # exit()
@@ -270,23 +308,23 @@ env=droneEnv('cont')
 #     t.join()
 
 # exit()
-### imshow as movie
+## imshow as movie
 # counter=1
 # for i in range(0,1000):
 #     try:
 #         # env.location=[100+i,100,60]
 
-#         obs=env.step([10,5,0])
-#         world_img=env.world_img
+#         obs, reward, done, info =env.step([70,0,0])
+#         print(reward)
+#         # world_img=env.world_img
         
-#         # frame1=env.fetch_frame()
-#         # cv2.imshow('drone view', frame1)
-#         gray_BGR = cv2.cvtColor(world_img, cv2.COLOR_GRAY2BGR)
-#         # print(env.boundaries[0],env.boundaries[2],env.boundaries[1],env.boundaries[1])
-#         img=cv2.rectangle(gray_BGR, (env.boundaries[2],env.boundaries[0]),(env.boundaries[3],env.boundaries[1]),(255, 0, 0),5)
-
-#         cv2.imshow('World view', img)
-#         cv2.imshow('drone view', obs)
+#         # # frame1=env.fetch_frame()
+#         # # cv2.imshow('drone view', frame1))
+#         # gray_BGR = cv2.cvtColor(world_img, cv2.COLOR_GRAY2BGR)
+#         # img=cv2.rectangle(gray_BGR, (env.boundaries[2],env.boundaries[0]),(env.boundaries[3],env.boundaries[1]),(255, 0, 0),5)
+#         # # print(i)
+#         # cv2.imshow('World view', img)
+#         # cv2.imshow('drone view', obs)
 #         time.sleep(0.5)
         
 #     except:
@@ -299,7 +337,7 @@ env=droneEnv('cont')
 #         env.close()
 #         # cam2.capture.release()
 #         cv2.destroyAllWindows()
-#         exit(1)
+#         exit()
 #         break        
         
         
