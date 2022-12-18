@@ -4,38 +4,60 @@ Created on Thu Nov 10 00:38:41 2022
 
 @author: amireniaraki
 """
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov 10 17:50:32 2022
 
-from stable_baselines3 import PPO, A2C
-import os
+@author: amire
+"""
 from IPP_drone_path_planner import droneEnv
 import time
-
-
-
-
-models_dir = f"Training/Models/{int(time.time())}/"
-logdir = f"Training/Logs/{int(time.time())}/"
-
-if not os.path.exists(models_dir):
-	os.makedirs(models_dir)
-
-if not os.path.exists(logdir):
-	os.makedirs(logdir)
+import cv2
+import numpy as np
+from sys import exit
+from configurations import Configs
 
 env = droneEnv('cont', render=True)
-env.reset()
+
+strides_x=int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
+strides_y=int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
+
+step_x=25 
+step_y=20
+LTR=1
+steps=0
+rewards=[]
 
 
-# model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=logdir)
-model = A2C('MlpPolicy', env, verbose=1, tensorboard_log=logdir, device='cuda')
 
-
-
-TIMESTEPS = 100000
-iters = 0
 while True:
-	iters += 1
-	model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"A2C")
-	model.save(f"{models_dir}/{TIMESTEPS*iters}")
+
+    if LTR==1:
+        while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[1])>1:
+            
+                obs, reward, done, info =env.step([step_x,0,0])
+                steps+=1
+                rewards.append(reward)
+            
+    if LTR==-1:
+
+        while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[0])>1:
+                obs, reward, done, info =env.step([step_x,0,0])
+                steps+=1
+                rewards.append(reward)      
     
+        
     
+    step_x=-step_x
+    LTR=-LTR
+    
+    if env.done==False and abs(env.location[1]-env.cfg.WORLD_YS[1])>1:   
+        obs, reward, done, infor =env.step([0,step_y,0])
+    else: 
+        break
+
+    
+env.close()
+
+
+

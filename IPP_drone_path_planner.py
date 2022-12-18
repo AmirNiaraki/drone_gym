@@ -81,8 +81,10 @@ class droneEnv(gym.Env):
         
         self.action=[0,0,0]
         if self.name=='cont':
-            self.observation_space = Box(low=0, high=255,
-                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+            # self.observation_space = Box(low=0, high=255,
+            #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+            self.observation_space=Box(low=-100, high=self.cfg.WORLD_XS[1],
+                                       shape=(5,), dtype=np.float32)
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float32)
         if self.name=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
@@ -110,7 +112,7 @@ class droneEnv(gym.Env):
          # self.prev_actions.append(action)
          # action=action/FPS
          # for i in range (1,FPS+1):
-        
+        self.reward=0
         self.abs_velocity=[action[0]-self.wind[0], action[1]-self.wind[1], action[2]]
         
         if  self.abs_velocity[0]<0:
@@ -135,11 +137,12 @@ class droneEnv(gym.Env):
              self.done=True
              self.close()
          
-        observation=self.fetch_frame()
-        # print(observation)
+
+        
+        
         if self.render==True and self.done==False:
             try:
-                cv2.imshow('just fetched', observation)
+                cv2.imshow('just fetched', self.fetch_frame())
                 _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
                 img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
                 img=cv2.putText(img, str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
@@ -165,13 +168,15 @@ class droneEnv(gym.Env):
         # if self.fetch_anomaly()>0:
         #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
         #     print('Total rewards is:', self.total_reward)
+        
         self.reward.astype(np.float32)
         info={}
-
-        # self.steps_taken=
         
-        # self.reward=
-        
+### defining observation        
+        # observation=self.fetch_frame()        
+        observation=[self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
+        observation = np.array(observation)        
+        print('observation: ', observation)
         
         return observation, self.reward, self.done, info
  
