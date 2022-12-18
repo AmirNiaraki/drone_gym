@@ -22,7 +22,7 @@ if not os.path.exists(models_dir):
 if not os.path.exists(logdir):
 	os.makedirs(logdir)
 
-env = droneEnv('cont', render=False)
+env = droneEnv('cont', render=True)
 env.reset()
 
 

@@ -1,58 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 10 17:50:32 2022
+Created on Thu Nov 10 00:38:41 2022
 
-@author: amire
+@author: amireniaraki
 """
+
+from stable_baselines3 import PPO, A2C
+import os
 from IPP_drone_path_planner import droneEnv
 import time
-import cv2
-import numpy as np
-from sys import exit
-from configurations import Configs
+
+
+
+
+models_dir = f"Training/Models/{int(time.time())}/"
+logdir = f"Training/Logs/{int(time.time())}/"
+
+if not os.path.exists(models_dir):
+	os.makedirs(models_dir)
+
+if not os.path.exists(logdir):
+	os.makedirs(logdir)
 
 env = droneEnv('cont', render=True)
+env.reset()
 
-strides_x=int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
-strides_y=int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
 
-step_x=env.visible_x
-step_y=env.visible_y
-LTR=1
-steps=0
-rewards=[]
+# model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=logdir)
+model = A2C('MlpPolicy', env, verbose=1, tensorboard_log=logdir, device='cuda')
 
-for i in range(strides_y):
-    if LTR==1:
-        for j in range(strides_x):
-            
-            if env.done==False:
-                obs, reward, done, info =env.step([step_x,0,0])
-                steps+=1
-                rewards.append(reward)
-            if env.done==True:
-                break
-    if LTR==-1:
 
-        for j in reversed(range(strides_x)):
-            
-            if env.done==False:
-                obs, reward, done, info =env.step([step_x,0,0])
-                steps+=1
-                rewards.append(reward)
-            if env.done==True:
-                break        
+
+TIMESTEPS = 100000
+iters = 0
+while True:
+	iters += 1
+	model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"A2C")
+	model.save(f"{models_dir}/{TIMESTEPS*iters}")
     
-    if env.done==True:
-        break
-        
-
-    step_x=-step_x
-    LTR=-LTR    
-    obs, reward, done, infor =env.step([0,step_y,0])
-
     
-env.close()
-
-
-

@@ -3,6 +3,11 @@
 Created on Sun Nov  6 15:35:20 2022
 
 @author: aniaraki
+
+
+----> X
+|
+Y
 """
 import gym 
 from gym import Env
@@ -23,7 +28,7 @@ import time
 import json
 from configurations import Configs
 import pickle
-
+from math import sqrt
 
 # STATES_X=100
 # STATES_Y=100
@@ -60,6 +65,10 @@ class droneEnv(gym.Env):
         self.location=self.cfg.init_location
         # self.world=self.world_genertor()
         self.world=np.load('test_world.npy')
+        # wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
+        self.wind=(-5, 0)
+        # lets assume drag coefficient is constant in every direction
+        self.c_d= 0.01
         # np.save('test_world', self.world)
         
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -67,9 +76,10 @@ class droneEnv(gym.Env):
         self.reward=0
         self.total_reward=0
         self.step_count=0
-        self.battery_inloop=False
+        self.battery_inloop=True
+
         
-        
+        self.action=[0,0,0]
         if self.name=='cont':
             self.observation_space = Box(low=0, high=255,
                                     shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
@@ -100,18 +110,23 @@ class droneEnv(gym.Env):
          # self.prev_actions.append(action)
          # action=action/FPS
          # for i in range (1,FPS+1):
-        if action[0]<0:
-            self.location[0]=max(self.location[0]+action[0], self.cfg.WORLD_XS[0])  
+        
+        self.abs_velocity=[action[0]-self.wind[0], action[1]-self.wind[1], action[2]]
+        
+        if  self.abs_velocity[0]<0:
+            self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
         else:
-            self.location[0]=min(self.location[0]+action[0], self.cfg.WORLD_XS[1])
-        if action[1]<0:
-            self.location[1]=max(self.location[1]+action[1], self.cfg.WORLD_YS[0])  
+            self.location[0]=min(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[1])
+        
+        if  self.abs_velocity[1]<0:
+            self.location[1]=max(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[0])  
         else:
-            self.location[1]=min(self.location[1]+action[1], self.cfg.WORLD_YS[1])
-        if action[2]<0:
-            self.location[2]=max(self.location[2]+action[2],self.cfg. WORLD_ZS[0])  
+            self.location[1]=min(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[1])
+        
+        if  self.abs_velocity[2]<0:
+            self.location[2]=max(self.location[2]+ self.abs_velocity[2],self.cfg. WORLD_ZS[0])  
         else:
-            self.location[2]=min(self.location[2]+action[2], self.cfg.WORLD_ZS[1])
+            self.location[2]=min(self.location[2]+ self.abs_velocity[2], self.cfg.WORLD_ZS[1])
              
         self.reward=-self.move_cost()
          
@@ -127,8 +142,9 @@ class droneEnv(gym.Env):
                 cv2.imshow('just fetched', observation)
                 _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
                 img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+                img=cv2.putText(img, str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
                 cv2.imshow('World view', img)
-                time.slepp(1)
+
                 
             except:
                 pass
@@ -138,12 +154,14 @@ class droneEnv(gym.Env):
                 
                 self.close()
 
-            
+        time.sleep(0.01)  
         # exit()
             
         self.reward+=self.fetch_anomaly()
         self.total_reward+=self.reward
         self.step_count+=1
+        print('STEP MTHD, count: ', self.step_count)
+        print('location: ', self.location, 'absolute velocity', self.abs_velocity, 'battery: ', self.battery)
         # if self.fetch_anomaly()>0:
         #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
         #     print('Total rewards is:', self.total_reward)
@@ -266,16 +284,21 @@ class droneEnv(gym.Env):
 
         # print('len of full pixs: ',str(len(full_pixles())), 'empty pixs: ', str(len(empty_pixels)))
         battery_img=np.uint8(np.concatenate((empty_pixels, full_pixels)))
-        cv2.imwrite('justB.png', battery_img)
+        # cv2.imwrite('justB.png', battery_img)
         self.output_frame=np.concatenate((input_frame, battery_img),axis=1)
         # output_frame=np.append(input_frame,np.zeros([len(input_frame),1]),1)
         return self.output_frame
         
     def move_cost(self):
 ### method to find the step cost based on drag force, for now everything costs 1
-        self.cost=1
+        
+        
+        self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
+        
+        # print('step cost: ', self.cost)
         if self.battery_inloop==True:
-            self.battery=self.battery-1
+            self.battery=max(0,self.battery-self.cost)
+            # print(self.battery)
         return self.cost
         
         
