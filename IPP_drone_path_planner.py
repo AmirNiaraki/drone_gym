@@ -52,13 +52,14 @@ from math import sqrt
 # MAX_SPEED=20 
 # PADDING=100
 # FPS=30
-### the padded area of the world is were the drone cannot go to but may appear in the frame
 
+### the padded area of the world is were the drone cannot go to but may appear in the frame
 class droneEnv(gym.Env):
     
     def __init__(self, name, render=True):
         super(droneEnv, self).__init__()
         self.cfg=Configs()
+        
         self.name=name
         self.render=render
 
@@ -66,7 +67,7 @@ class droneEnv(gym.Env):
         # self.world=self.world_genertor()
         self.world=np.load('test_world.npy')
         # wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.wind=(-5, 0)
+        self.wind=(-5., 0.0)
         # lets assume drag coefficient is constant in every direction
         self.c_d= 0.01
         # np.save('test_world', self.world)
@@ -83,28 +84,20 @@ class droneEnv(gym.Env):
         if self.name=='cont':
             # self.observation_space = Box(low=0, high=255,
             #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-            self.observation_space=Box(low=-100, high=self.cfg.WORLD_XS[1],
-                                       shape=(5,), dtype=np.float32)
-            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float32)
+            self.observation_space=Box(low=-2000, high=2000,
+                                       shape=(6,), dtype=np.float64)
+            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
         if self.name=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
             self.action_space=Discrete(8)
         
-        
-
-
 ### for getting the frame to the agent at all times
         self.thread=Thread(target=self.update_frame, args=(),daemon=True)
         self.thread.start()
-        time.sleep(1)
-
-        # self.reset()
-        
+        time.sleep(0.01)
         print('environment is initialized')        
-
-
-        
+       
         
     def step(self, action):
 ### defining navigation #######################################################     
@@ -130,16 +123,14 @@ class droneEnv(gym.Env):
         else:
             self.location[2]=min(self.location[2]+ self.abs_velocity[2], self.cfg.WORLD_ZS[1])
              
-        self.reward=-self.move_cost()
-         
+        self.reward =- self.move_cost()
+               
         if self.battery<1:
              self.reward-=10
              self.done=True
              self.close()
          
-
-        
-        
+       
         if self.render==True and self.done==False:
             try:
                 cv2.imshow('just fetched', self.fetch_frame())
@@ -151,10 +142,10 @@ class droneEnv(gym.Env):
                 
             except:
                 pass
+            
             if cv2.waitKey(1)==ord('q'):
                 print('Q hit:')
                 self.done=True
-                
                 self.close()
 
         time.sleep(0.01)  
@@ -163,8 +154,8 @@ class droneEnv(gym.Env):
         self.reward+=self.fetch_anomaly()
         self.total_reward+=self.reward
         self.step_count+=1
-        print('STEP MTHD, count: ', self.step_count)
-        print('location: ', self.location, 'absolute velocity', self.abs_velocity, 'battery: ', self.battery)
+        # print('STEP MTHD, count: ', self.step_count)
+        print('location: ', self.location, 'config loc: ', self.cfg.init_location)
         # if self.fetch_anomaly()>0:
         #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
         #     print('Total rewards is:', self.total_reward)
@@ -174,36 +165,48 @@ class droneEnv(gym.Env):
         
 ### defining observation        
         # observation=self.fetch_frame()        
-        observation=[self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
+        observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
         observation = np.array(observation)        
-        print('observation: ', observation)
+
         
         return observation, self.reward, self.done, info
  
          
          
          
-###############################################################################
-    
+###############################################################################   
     def reset(self):
-        self.location=self.cfg.init_location
-        self.world=self.world_genertor()
+### for COARSE Coding there is an auxiliary function to get location from state
+        print('\n \n \n \n  reset happened!!! \n \n \n \n')
+        # self.imager_thread_name.join()
+        # cv2.destroyAllWindows()       
+        # self.thread=Thread(target=self.update_frame, args=(),daemon=True)
+        # self.thread.start()
+        time.sleep(0.01)
+
+        self.location = self.cfg.init_location
+        print('config init: ', self.cfg.init_location)
         
+        print('location in reset :', self.location)
+        
+        # self.world=self.world_genertor()
+        self.world=np.load('test_world.npy')
+
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
         self.total_reward=0
         self.step_count=0
-        ###for COARSE Coding there is an auxiliary function to get location from state
+
         self.prev_reward=0
         self.score = 0 
         self.done = False
 
-        observation=self.fetch_frame()
+        observation=[self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
+        observation = np.array(observation) 
+        
         return observation
 
-    
-
-        # return self.state, reward, done, info        
+       
 ### Auxiliary functions #######################################################        
     def world_genertor(self):
         seeds=self.cfg.SEEDS
@@ -223,6 +226,7 @@ class droneEnv(gym.Env):
                      except:
                          pass
         return self.world
+    
     
     def update_frame (self):
         self.imager_thread_name=threading.current_thread()
@@ -296,8 +300,6 @@ class droneEnv(gym.Env):
         
     def move_cost(self):
 ### method to find the step cost based on drag force, for now everything costs 1
-        
-        
         self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
         # print('step cost: ', self.cost)

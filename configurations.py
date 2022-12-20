@@ -13,7 +13,7 @@ class Configs:
         self.STATES_Y=100
         self.STATES_Z=1
         self.init_state=[1,1,1]
-        self.init_location=[100,100,60]
+        self.init_location=[100.,100.,60.]
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
@@ -27,7 +27,7 @@ class Configs:
         self.FRAME_H=250
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=47/2 #degrees for halve of the field of view verticaly
-        self.FULL_BATTERY=100
+        self.FULL_BATTERY=100.
         self.MAX_SPEED=20 
         self.PADDING=100
         self.FPS=30
