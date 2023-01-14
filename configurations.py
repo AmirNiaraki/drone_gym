@@ -32,6 +32,9 @@ class Configs:
         self.PADDING=100
         self.FPS=30
         self.OVERLAP=0.5
+        ### the default wind is blowing towards positive x (west to east) 
+        self.DEFAULT_WIND=(3.5,0.)
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
+        
         
 cfg=Configs()

@@ -63,13 +63,15 @@ class droneEnv(gym.Env):
         self.name=name
         self.render=render
 
-        self.location=self.cfg.init_location
+        # self.location=self.cfg.init_location
+        self.location=[100.,100.,60.]
+
         # self.world=self.world_genertor()
         self.world=np.load('test_world.npy')
         # wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.wind=(-5., 0.0)
+        self.wind=(0.0, 3.5)
         # lets assume drag coefficient is constant in every direction
-        self.c_d= 0.01
+        self.c_d= 0.018
         # np.save('test_world', self.world)
         
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -99,7 +101,7 @@ class droneEnv(gym.Env):
         print('environment is initialized')        
        
         
-    def step(self, action):
+    def step(self, action, DISPLAY=True):
 ### defining navigation #######################################################     
 ### let's assume each step takes 1 second and moves the agent for =1 (s) * V (m/s)    
          # self.prev_actions.append(action)
@@ -133,6 +135,7 @@ class droneEnv(gym.Env):
        
         if self.render==True and self.done==False:
             try:
+                print(self.boundaries)
                 cv2.imshow('just fetched', self.fetch_frame())
                 _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
                 img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
@@ -141,6 +144,7 @@ class droneEnv(gym.Env):
 
                 
             except:
+                print('frame not available to render!')
                 pass
             
             if cv2.waitKey(1)==ord('q'):
@@ -155,7 +159,7 @@ class droneEnv(gym.Env):
         self.total_reward+=self.reward
         self.step_count+=1
         # print('STEP MTHD, count: ', self.step_count)
-        print('location: ', self.location, 'config loc: ', self.cfg.init_location)
+
         # if self.fetch_anomaly()>0:
         #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
         #     print('Total rewards is:', self.total_reward)
@@ -166,7 +170,9 @@ class droneEnv(gym.Env):
 ### defining observation        
         # observation=self.fetch_frame()        
         observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation)        
+        observation = np.array(observation)   
+        if DISPLAY==True:
+            self.display_info()
 
         
         return observation, self.reward, self.done, info
@@ -178,17 +184,16 @@ class droneEnv(gym.Env):
     def reset(self):
 ### for COARSE Coding there is an auxiliary function to get location from state
         print('\n \n \n \n  reset happened!!! \n \n \n \n')
-        # self.imager_thread_name.join()
-        # cv2.destroyAllWindows()       
-        # self.thread=Thread(target=self.update_frame, args=(),daemon=True)
-        # self.thread.start()
+        
+        self.close()
+        self.done = False
         time.sleep(0.01)
+        self.thread=Thread(target=self.update_frame, args=(),daemon=True)
+        self.thread.start()
 
-        self.location = self.cfg.init_location
-        print('config init: ', self.cfg.init_location)
-        
-        print('location in reset :', self.location)
-        
+        # self.location = self.cfg.init_location
+        self.location = [100.,100.,60.]
+
         # self.world=self.world_genertor()
         self.world=np.load('test_world.npy')
 
@@ -199,7 +204,6 @@ class droneEnv(gym.Env):
 
         self.prev_reward=0
         self.score = 0 
-        self.done = False
 
         observation=[self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
         observation = np.array(observation) 
@@ -225,6 +229,7 @@ class droneEnv(gym.Env):
                          self.world[corner[1]+j][corner[0]+i]=1
                      except:
                          pass
+                     
         return self.world
     
     
@@ -307,6 +312,11 @@ class droneEnv(gym.Env):
             self.battery=max(0,self.battery-self.cost)
             # print(self.battery)
         return self.cost
+    def display_info(self):
+        print('battery level: ', self.battery)
+        print('current location: ', self.location)
+        print('current wind field (x,y): ', self.wind)
+        
         
         
          
