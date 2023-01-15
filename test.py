@@ -5,13 +5,13 @@ Created on Sat Jan 14 09:43:09 2023
 @author: amire
 """
 
-from IPP_drone_path_planner import droneEnv
+from math import degrees, cos, tan, acos, sqrt
 
-env = droneEnv('cont', render=False)
+action=(10,0)
+wind=(-10,0)
 
-print('init location in class:', env.location, 'init location in cfg: ', env.cfg.init_location)
-env.step([100,0,0])
+theta=degrees(acos((action[0]*wind[0]+action[1]*wind[1])/(sqrt(action[0]**2+action[1]**2)*sqrt(wind[0]**2+wind[1]**2))))
+print(theta)
 
-print('init location in class:', env.location, 'init location in cfg: ', env.cfg.init_location)
 
 

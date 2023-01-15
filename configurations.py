@@ -6,6 +6,7 @@ Created on Tue Nov 22 10:10:45 2022
 """
 
 import numpy as np
+import pandas as pd
 
 class Configs:
     def __init__(self):
@@ -35,6 +36,7 @@ class Configs:
         ### the default wind is blowing towards positive x (west to east) 
         self.DEFAULT_WIND=(3.5,0.)
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
+        self.drag_table=pd.read_csv('drag_dataset.csv', index_col=0)
         
         
 cfg=Configs()

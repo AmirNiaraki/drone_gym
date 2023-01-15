@@ -13,7 +13,8 @@ import gym
 from gym import Env
 from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete 
 import numpy as np
-from math import tan, radians
+import pandas as pd
+from math import tan, radians, degrees, acos, sqrt
 import random
 import os
 from stable_baselines3 import PPO
@@ -22,13 +23,11 @@ from stable_baselines3.common.evaluation import evaluate_policy
 import cv2
 from threading import Thread
 import threading
-from multiprocessing  import Process
 from sys import exit
 import time
-import json
 from configurations import Configs
 import pickle
-from math import sqrt
+
 
 # STATES_X=100
 # STATES_Y=100
@@ -304,83 +303,36 @@ class droneEnv(gym.Env):
         return self.output_frame
         
     def move_cost(self):
+        #finding the relative angle of wind to drone
+        self.wind_angle=degrees(acos((self.action[0]*self.wind[0]+self.action[1]*self.wind[1])
+                                     /(sqrt(self.action[0]**2+self.action[1]**2)*sqrt(self.wind[0]**2+self.wind[1]**2))))
+        #finding the relative velocity of wind to drone in absolute value
+        self.relative_velocity=sqrt((self.action[0]-self.wind[0])**2+(self.action[1]-self.wind[1])**2)
+        
+        try: 
+            self.drag=self.cfg.drag_table.iloc[round(self.relative_velocity/45.), round((self.abs_velocity-12)/5)]
+        except:
+            print('relative velocity/angles out of bounds.')
+            # defualt drag
+            self.drag=0.1
+        self.cost=self.drag*self.relative_velocity**2
 ### method to find the step cost based on drag force, for now everything costs 1
-        self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
+        # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
         # print('step cost: ', self.cost)
         if self.battery_inloop==True:
             self.battery=max(0,self.battery-self.cost)
             # print(self.battery)
         return self.cost
+    
     def display_info(self):
         print('battery level: ', self.battery)
         print('current location: ', self.location)
-        print('current wind field (x,y): ', self.wind)
-        
-        
-        
-         
-            
+        print('current wind angle: ', self.wind_angle)
+        print('relative velocity: ', self.relative_velocity)
+        print('')
 
-# env=droneEnv('cont', render=True)
-
-
-# exit()
-# W=env.world_genertor()
-# cv2.imwrite('withB.png', W)
-# obs=env.step([500,100,10])
-# print(obs)
-# cv2.imwrite('observation', obs)
-
-# frame1=env.fetch_frame()
-# frame2=env.concat_battery()
-
-# cv2.imwrite('without battery', frame1)
-# cv2.imwrite('withB.png', frame2)
-# env.close()
-
-## closing all the threads except main
-# main_thread = threading.current_thread()
-# for t in threading.enumerate():
-#     if t is env.main_thread:
-#         continue
-#     print(t)
-#     t.join()
-
-# exit()
-## imshow as movie
-# counter=1
-# for i in range(0,1000):
-#     try:
-#         # env.location=[100+i,100,60]
-
-#         obs, reward, done, info =env.step([70,0,0])
-#         print(reward)
-#         # world_img=env.world_img
-        
-#         # # frame1=env.fetch_frame()
-#         # # cv2.imshow('drone view', frame1))
-#         # gray_BGR = cv2.cvtColor(world_img, cv2.COLOR_GRAY2BGR)
-#         # img=cv2.rectangle(gray_BGR, (env.boundaries[2],env.boundaries[0]),(env.boundaries[3],env.boundaries[1]),(255, 0, 0),5)
-#         # # print(i)
-#         # cv2.imshow('World view', img)
-#         # cv2.imshow('drone view', obs)
-#         time.sleep(0.5)
-        
-#     except:
-#         # print('frame is not available')
-#         counter=counter+1
-#         if counter==2000:
-#             break
-       
-#     if cv2.waitKey(1)==ord('q'):
-#         env.close()
-#         # cam2.capture.release()
-#         cv2.destroyAllWindows()
-#         exit()
-#         break        
         
         
         
-        
-    
+   
