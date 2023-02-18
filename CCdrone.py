@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 10 00:38:41 2022
-
-@author: amireniaraki
-"""
-# -*- coding: utf-8 -*-
-"""
 Created on Thu Nov 10 17:50:32 2022
 
 @author: amire
+
+
+The following script takes in a RECTANGULAR image and generates the complete coverage with defualt:
+        1. Front overlap, 2. Side overlap, 3. Drone speed, 4. Wind field and 5. Altitude
 """
 from IPP_drone_path_planner import droneEnv
 import time
@@ -22,13 +20,13 @@ env = droneEnv('cont', render=True)
 strides_x=int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
 strides_y=int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
 
-step_x=10 
-step_y=10
+step_x=5 
+step_y=5
 LTR=1
 steps=0
 rewards=[]
 
-for i in range(2):
+for i in range(5):
     # env.close()
     som_obs=env.reset()
     print('Iteration: ', i, '\n supposed location: ', env.location, 'configurations: ', env.cfg.init_location)

@@ -69,8 +69,7 @@ class droneEnv(gym.Env):
         self.world=np.load('test_world.npy')
         # wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(0.0, 3.5)
-        # lets assume drag coefficient is constant in every direction
-        self.c_d= 0.018
+
         # np.save('test_world', self.world)
         
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -80,6 +79,7 @@ class droneEnv(gym.Env):
         self.step_count=0
         self.battery_inloop=True
 
+        self.drag_normalizer_coef=0.1
         
         self.action=[0,0,0]
         if self.name=='cont':
@@ -98,16 +98,18 @@ class droneEnv(gym.Env):
         self.thread.start()
         time.sleep(0.01)
         print('environment is initialized')        
-       
+   
         
     def step(self, action, DISPLAY=True):
-### defining navigation #######################################################     
-### let's assume each step takes 1 second and moves the agent for =1 (s) * V (m/s)    
-         # self.prev_actions.append(action)
-         # action=action/FPS
-         # for i in range (1,FPS+1):
+        '''
+    defining navigation:     
+    let's assume each step takes 1 second and moves the agent for =1 (s) * V (m/s)    
+    the idea is that action is the absolute velocity. now if you have a heavy wind the cost will be higher
+    but the absolute velocity won't change.
+        '''
+        self.action=action     
         self.reward=0
-        self.abs_velocity=[action[0]-self.wind[0], action[1]-self.wind[1], action[2]]
+        self.abs_velocity=self.action
         
         if  self.abs_velocity[0]<0:
             self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
@@ -133,25 +135,10 @@ class droneEnv(gym.Env):
          
        
         if self.render==True and self.done==False:
-            try:
-                print(self.boundaries)
-                cv2.imshow('just fetched', self.fetch_frame())
-                _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
-                img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
-                img=cv2.putText(img, str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-                cv2.imshow('World view', img)
+            self.renderer()
 
-                
-            except:
-                print('frame not available to render!')
-                pass
-            
-            if cv2.waitKey(1)==ord('q'):
-                print('Q hit:')
-                self.done=True
-                self.close()
 
-        time.sleep(0.01)  
+        time.sleep(0.001)  
         # exit()
             
         self.reward+=self.fetch_anomaly()
@@ -176,6 +163,24 @@ class droneEnv(gym.Env):
         
         return observation, self.reward, self.done, info
  
+    def renderer(self):
+        try:
+            print(self.boundaries)
+            cv2.imshow('just fetched', self.fetch_frame())
+            _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
+            img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+            img=cv2.putText(img, str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            cv2.imshow('World view', img)
+
+            
+        except:
+            print('frame not available to render!')
+            pass
+        
+        if cv2.waitKey(1)==ord('q'):
+            print('Q hit:')
+            self.done=True
+            self.close()        
          
          
          
@@ -304,17 +309,20 @@ class droneEnv(gym.Env):
         
     def move_cost(self):
         #finding the relative angle of wind to drone
+        # print('inside move_cost() method \n actions: ', self.action[0] , self.action[1], 'winds: ', self.wind[0], self.wind[1])
         self.wind_angle=degrees(acos((self.action[0]*self.wind[0]+self.action[1]*self.wind[1])
                                      /(sqrt(self.action[0]**2+self.action[1]**2)*sqrt(self.wind[0]**2+self.wind[1]**2))))
         #finding the relative velocity of wind to drone in absolute value
         self.relative_velocity=sqrt((self.action[0]-self.wind[0])**2+(self.action[1]-self.wind[1])**2)
         
         try: 
-            self.drag=self.cfg.drag_table.iloc[round(self.relative_velocity/45.), round((self.abs_velocity-12)/5)]
+            print('angle: ', self.wind_angle, 'relative vel', self.relative_velocity)            
+            self.drag=self.cfg.drag_table.iloc[round(self.wind_angle/45.), round((self.relative_velocity-12)/5)]*self.drag_normalizer_coef
+            print('drag from csv: ', self.drag/self.drag_normalizer_coef)
         except:
             print('relative velocity/angles out of bounds.')
             # defualt drag
-            self.drag=0.1
+            self.drag=0.1*self.drag_normalizer_coef
         self.cost=self.drag*self.relative_velocity**2
 ### method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
