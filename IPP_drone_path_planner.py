@@ -29,30 +29,6 @@ from configurations import Configs
 import pickle
 
 
-# STATES_X=100
-# STATES_Y=100
-# STATES_Z=1
-# init_state=[1,1,1]
-# init_location=[100,100,60]
-# ### lets define a 1000 m * 250 m = 60 acres world
-# ### lets assume the flight altitude can vary between 60 to 100 m
-# ### The world generates square patches with sizes ranging between (1,10)
-# WORLD_XS=[100,1900]
-# WORLD_YS=[100,900]
-# WORLD_ZS=[60,100]
-
-# SEEDS=200
-# square_size_range=(1,10)
-# FRAME_W=350
-# FRAME_H=250
-# FOV_X=60/2 #degrees for halve of the field of view horizontaly
-# FOV_Y=47/2 #degrees for halve of the field of view verticaly
-# FULL_BATTERY=100
-# MAX_SPEED=20 
-# PADDING=100
-# FPS=30
-
-### the padded area of the world is were the drone cannot go to but may appear in the frame
 class droneEnv(gym.Env):
     
     def __init__(self, name, render=True):
@@ -65,13 +41,13 @@ class droneEnv(gym.Env):
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
 
-        # self.world=self.world_genertor()
-        self.world=np.load('test_world.npy')
-        # wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.wind=(0.0, 3.5)
-
+        self.world=self.world_genertor()
         # np.save('test_world', self.world)
-        
+        # self.world=np.load('test_world.npy')
+### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
+        self.wind=(3.5, 0)
+
+       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.done=False
         self.reward=0
@@ -79,7 +55,7 @@ class droneEnv(gym.Env):
         self.step_count=0
         self.battery_inloop=True
 
-        self.drag_normalizer_coef=0.1
+        self.drag_normalizer_coef=0.5
         
         self.action=[0,0,0]
         if self.name=='cont':
@@ -94,13 +70,14 @@ class droneEnv(gym.Env):
             self.action_space=Discrete(8)
         
 ### for getting the frame to the agent at all times
+        time.sleep(0.01)
         self.thread=Thread(target=self.update_frame, args=(),daemon=True)
         self.thread.start()
         time.sleep(0.01)
         print('environment is initialized')        
    
         
-    def step(self, action, DISPLAY=True):
+    def step(self, action, DISPLAY=False):
         '''
     defining navigation:     
     let's assume each step takes 1 second and moves the agent for =1 (s) * V (m/s)    
@@ -159,17 +136,21 @@ class droneEnv(gym.Env):
         observation = np.array(observation)   
         if DISPLAY==True:
             self.display_info()
-
+        if self.cfg.MAX_STEPS<self.step_count:
+            self.done=True
         
         return observation, self.reward, self.done, info
  
     def renderer(self):
         try:
-            print(self.boundaries)
             cv2.imshow('just fetched', self.fetch_frame())
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
-            img=cv2.putText(img, str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            img=cv2.putText(img, 'step ' + str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (50,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            img=cv2.putText(img, 'wind direction: '+ str(self.wind_angle), (50,130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            img=cv2.putText(img, 'flight altitude: '+ str(self.location[2]), (50,150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+
             cv2.imshow('World view', img)
 
             
@@ -198,8 +179,8 @@ class droneEnv(gym.Env):
         # self.location = self.cfg.init_location
         self.location = [100.,100.,60.]
 
-        # self.world=self.world_genertor()
-        self.world=np.load('test_world.npy')
+        self.world=self.world_genertor()
+        # self.world=np.load('test_world.npy')
 
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
@@ -215,8 +196,8 @@ class droneEnv(gym.Env):
         return observation
 
        
-### Auxiliary functions #######################################################        
     def world_genertor(self):
+        ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
         size=(self.cfg.WORLD_YS[1]+self.cfg.PADDING,self.cfg.WORLD_XS[1]+self.cfg.PADDING)
         self.world=np.zeros(size, dtype=int)
@@ -251,7 +232,7 @@ class droneEnv(gym.Env):
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
             added_battery=self.concat_battery(resized)
             self.frame=added_battery
-
+            
             if self.done==True:
                 # cv2.destroyAllWindows()
                 break
@@ -316,9 +297,7 @@ class droneEnv(gym.Env):
         self.relative_velocity=sqrt((self.action[0]-self.wind[0])**2+(self.action[1]-self.wind[1])**2)
         
         try: 
-            print('angle: ', self.wind_angle, 'relative vel', self.relative_velocity)            
             self.drag=self.cfg.drag_table.iloc[round(self.wind_angle/45.), round((self.relative_velocity-12)/5)]*self.drag_normalizer_coef
-            print('drag from csv: ', self.drag/self.drag_normalizer_coef)
         except:
             print('relative velocity/angles out of bounds.')
             # defualt drag
@@ -334,11 +313,17 @@ class droneEnv(gym.Env):
         return self.cost
     
     def display_info(self):
-        print('battery level: ', self.battery)
-        print('current location: ', self.location)
-        print('current wind angle: ', self.wind_angle)
-        print('relative velocity: ', self.relative_velocity)
-        print('')
+        print('==== INFO ==== \n')
+        # print('step count: ', self.step_count)
+        # print('battery level: ', self.battery)
+        # print('current location: ', self.location)
+        # print('current wind angle: ', self.wind_angle)
+        # print('relative velocity: ', self.relative_velocity)
+        print('step:', self.step_count, ' reward: ', self.reward)
+        print('\n total reward: ', self.total_reward)
+
+        
+        print('========= \n')
 
         
         

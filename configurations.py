@@ -18,11 +18,11 @@ class Configs:
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
-        self.WORLD_XS=[100,1900]
-        self.WORLD_YS=[100,900]
+        self.WORLD_XS=[100,900]
+        self.WORLD_YS=[100,400]
         self.WORLD_ZS=[60,100]
 
-        self.SEEDS=200
+        self.SEEDS=20
         self.square_size_range=(1,10)
         self.FRAME_W=350
         self.FRAME_H=250
@@ -38,5 +38,7 @@ class Configs:
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         self.drag_table=pd.read_csv('drag_dataset.csv', index_col=0)
         
+        ### how many steps per episode
+        self.MAX_STEPS=1000
         
 cfg=Configs()

@@ -26,7 +26,7 @@ LTR=1
 steps=0
 rewards=[]
 
-for i in range(5):
+for i in range(1):
     # env.close()
     som_obs=env.reset()
     print('Iteration: ', i, '\n supposed location: ', env.location, 'configurations: ', env.cfg.init_location)
@@ -40,6 +40,7 @@ for i in range(5):
         
                     steps+=1
                     rewards.append(reward)
+
                 
         if LTR==-1:
     

@@ -25,12 +25,13 @@ env = droneEnv('cont', render=True)
 # model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=logdir)
 model = A2C('MlpPolicy', env, verbose=1, tensorboard_log=logdir)
 
-TIMESTEPS = 100000
+TIMESTEPS = 1000000
 iters = 0
 
 while True:
-	iters += 1
-	model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"A2C")
-	model.save(f"{models_dir}/{TIMESTEPS*iters}")
-    
+    iters += 1
+    print('iteration: ', iters)
+    model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"A2C")
+    model.save(f"{models_dir}/{TIMESTEPS*iters}")
+
     
