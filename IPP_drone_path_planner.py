@@ -31,23 +31,19 @@ import pickle
 
 class droneEnv(gym.Env):
     
-    def __init__(self, name, render=True):
-        super(droneEnv, self).__init__()
-        self.cfg=Configs()
-        
+    def __init__(self, name, render=False):
+        # super(droneEnv, self).__init__()
+        super().__init__()
+        self.cfg=Configs()       
         self.name=name
         self.render=render
-
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
-
         self.world=self.world_genertor()
         # np.save('test_world', self.world)
         # self.world=np.load('test_world.npy')
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.wind=(3.5, 0)
-
-       
+        self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.done=False
         self.reward=0
@@ -63,11 +59,15 @@ class droneEnv(gym.Env):
             #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
             self.observation_space=Box(low=-2000, high=2000,
                                        shape=(6,), dtype=np.float64)
+            
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
         if self.name=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-            self.action_space=Discrete(8)
+            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+            self.observation_space=Box(low=-2000, high=2000,
+                                       shape=(6,), dtype=np.float64)
+            
         
 ### for getting the frame to the agent at all times
         time.sleep(0.01)
@@ -133,7 +133,8 @@ class droneEnv(gym.Env):
 ### defining observation        
         # observation=self.fetch_frame()        
         observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation)   
+        observation = np.array(observation) 
+
         if DISPLAY==True:
             self.display_info()
         if self.cfg.MAX_STEPS<self.step_count:
@@ -148,8 +149,8 @@ class droneEnv(gym.Env):
             img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
             img=cv2.putText(img, 'step ' + str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
             img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (50,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            img=cv2.putText(img, 'wind direction: '+ str(self.wind_angle), (50,130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            img=cv2.putText(img, 'flight altitude: '+ str(self.location[2]), (50,150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            img=cv2.putText(img, 'wind direction: '+ str(self.wind_angle), (50,110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            img=cv2.putText(img, 'flight altitude: '+ str(self.location[2]), (50,140), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
 
             cv2.imshow('World view', img)
 
