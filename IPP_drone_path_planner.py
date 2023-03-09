@@ -24,6 +24,8 @@ import cv2
 from threading import Thread
 import threading
 from sys import exit
+import sys
+
 import time
 from configurations import Configs
 import pickle
@@ -31,23 +33,19 @@ import pickle
 
 class droneEnv(gym.Env):
     
-    def __init__(self, name, render=True):
-        super(droneEnv, self).__init__()
-        self.cfg=Configs()
-        
+    def __init__(self, name, render=False):
+        # super(droneEnv, self).__init__()
+        super().__init__()
+        self.cfg=Configs()       
         self.name=name
         self.render=render
-
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
-
         self.world=self.world_genertor()
         # np.save('test_world', self.world)
         # self.world=np.load('test_world.npy')
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.wind=(3.5, 0)
-
-       
+        self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.done=False
         self.reward=0
@@ -63,19 +61,60 @@ class droneEnv(gym.Env):
             #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
             self.observation_space=Box(low=-2000, high=2000,
                                        shape=(6,), dtype=np.float64)
+            
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
         if self.name=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-            self.action_space=Discrete(8)
-        
+            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+            self.observation_space=Box(low=-2000, high=2000,
+                                       shape=(6,), dtype=np.float64)
+                   
 ### for getting the frame to the agent at all times
         time.sleep(0.01)
         self.thread=Thread(target=self.update_frame, args=(),daemon=True)
         self.thread.start()
         time.sleep(0.01)
         print('environment is initialized')        
-   
+        
+    def update_frame (self):
+        self.imager_thread_name=threading.current_thread()
+        print('top of the thread')
+        while self.done==False:
+            self.visible_x=tan(radians(self.cfg.FOV_X))*2*self.location[2]
+            self.visible_y=tan(radians(self.cfg.FOV_Y))*2*self.location[2]
+            self.world_img=np.uint8((1-self.world)*255)
+            ### take snap of the sim based on location [x,y,z]
+            ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
+            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
+            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
+
+            added_battery=self.concat_battery(resized)
+            self.frame=added_battery
+            
+            if self.done==True:
+                # print('done is true instide update_frame() trying to join')
+                break
+                
+        # print('Frame Update stopping...  ',  self.imager_thread_name)
+
+    def fetch_frame(self):
+        return self.frame
+    
+    def fetch_anomaly(self):
+        observation=self.fetch_frame()
+        nobat=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
+        
+        score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(nobat/255, dtype=np.int32)
+        ### removing the detected objects from the world!!!
+        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
+        
+        return score
+
+
+
+
         
     def step(self, action, DISPLAY=False):
         '''
@@ -133,7 +172,8 @@ class droneEnv(gym.Env):
 ### defining observation        
         # observation=self.fetch_frame()        
         observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation)   
+        observation = np.array(observation) 
+
         if DISPLAY==True:
             self.display_info()
         if self.cfg.MAX_STEPS<self.step_count:
@@ -168,9 +208,12 @@ class droneEnv(gym.Env):
 ###############################################################################   
     def reset(self):
 ### for COARSE Coding there is an auxiliary function to get location from state
-        print('\n \n \n \n  reset happened!!! \n \n \n \n')
-        
+        # print('\n \n \n \n  reset happened!!! \n \n \n \n')
+        print('number of active threads:', threading.active_count())        
         self.close()
+
+
+
         self.done = False
         time.sleep(0.01)
         self.thread=Thread(target=self.update_frame, args=(),daemon=True)
@@ -194,8 +237,7 @@ class droneEnv(gym.Env):
         observation = np.array(observation) 
         
         return observation
-
-       
+      
     def world_genertor(self):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
@@ -216,47 +258,6 @@ class droneEnv(gym.Env):
                          pass
                      
         return self.world
-    
-    
-    def update_frame (self):
-        self.imager_thread_name=threading.current_thread()
-        print('top of the thread')
-        while self.done==False:
-            self.visible_x=tan(radians(self.cfg.FOV_X))*2*self.location[2]
-            self.visible_y=tan(radians(self.cfg.FOV_Y))*2*self.location[2]
-            self.world_img=np.uint8((1-self.world)*255)
-            ### take snap of the sim based on location [x,y,z]
-            ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
-            crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
-            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
-            added_battery=self.concat_battery(resized)
-            self.frame=added_battery
-            
-            if self.done==True:
-                # cv2.destroyAllWindows()
-                break
-                
-        print('Frame Update stopping...  ',  self.imager_thread_name)
-
-
-    def fetch_frame(self):
-        
-        return self.frame
-    
-    
-    def fetch_anomaly(self):
-        observation=self.fetch_frame()
-        nobat=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
-        
-        score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(nobat/255, dtype=np.int32)
-        ### removing the detected objects from the world!!!
-        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
-        
-        return score
-
-        
-        
 
     def loc_from_state(self):
         state_x_size=(self.cfg.WORLD_XS[1]-self.cfg.WORLD_XS[0])/self.cfg.STATES_X
@@ -267,7 +268,7 @@ class droneEnv(gym.Env):
         return loc
     
     def close(self):
-        print('trying to close the env and destroy windows...')
+        # print('trying to close the env and destroy windows...')
         self.done=True
         time.sleep(0.1)
         self.imager_thread_name.join()
@@ -276,16 +277,14 @@ class droneEnv(gym.Env):
         
 ### method receives frame as np array adds a column the end that represent battery level    
     def concat_battery(self, input_frame):
-        full_pixels=np.zeros([int(self.cfg.FRAME_H*self.battery/100), 1])
+        full_pixels_count=int(self.cfg.FRAME_H*self.battery/100)
+        full_pixels=np.zeros([full_pixels_count, 1])
         full_pixels.astype(int)
-        empty_pixels=(np.zeros([self.cfg.FRAME_H-int(self.cfg.FRAME_H*self.battery/100),1])+1)*255
+        empty_pixels=(np.zeros([self.cfg.FRAME_H-full_pixels_count,1])+1)*255
         empty_pixels.astype(int)
 
-        # print('len of full pixs: ',str(len(full_pixles())), 'empty pixs: ', str(len(empty_pixels)))
         battery_img=np.uint8(np.concatenate((empty_pixels, full_pixels)))
-        # cv2.imwrite('justB.png', battery_img)
         self.output_frame=np.concatenate((input_frame, battery_img),axis=1)
-        # output_frame=np.append(input_frame,np.zeros([len(input_frame),1]),1)
         return self.output_frame
         
     def move_cost(self):
@@ -311,6 +310,30 @@ class droneEnv(gym.Env):
             self.battery=max(0,self.battery-self.cost)
             # print(self.battery)
         return self.cost
+ 
+    def renderer(self):
+        try:
+            cv2.imshow('just fetched', self.fetch_frame())
+            _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
+            img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+            img=cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img=cv2.putText(img, 'step ' + str(self.step_count), (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img=cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle,2)), (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img=cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+
+            cv2.imshow('World view', img)
+
+            
+        except:
+            print('frame not available for render!')
+            pass
+        
+        if cv2.waitKey(1)==ord('q'):
+            print('Q hit:')
+            self.done=True
+            self.close()        
+         
     
     def display_info(self):
         print('==== INFO ==== \n')

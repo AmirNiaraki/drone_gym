@@ -29,7 +29,7 @@ class Configs:
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=47/2 #degrees for halve of the field of view verticaly
         self.FULL_BATTERY=100.
-        self.MAX_SPEED=20 
+        self.MAX_SPEED=5 #maximum allowed drone speed
         self.PADDING=100
         self.FPS=30
         self.OVERLAP=0.5
