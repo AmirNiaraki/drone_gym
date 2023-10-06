@@ -13,22 +13,21 @@ class Configs:
 		self.STATES_X = 100
 		self.STATES_Y = 100
 		self.STATES_Z = 1
-		self.init_state = [1,1,1]
-		self.init_location = [100.,100.,60.]
-"""
-Lets define a 1000 m * 250 m = 60 acres world
-Lets assume the flight altitude can vary between 60 to 100 m
-The world generates square patches with sizes ranging between (1,10)
-"""
-		self.WORLD_XS = [100,900]
-		self.WORLD_YS = [100,400]
-		self.WORLD_ZS = [60,100]
+		self.init_state = [1, 1, 1]
+		self.init_location = [100., 100., 60.]
 
+#Lets define a 1000 meters by 250 meters (60 acre) world
+#Lets assume the flight altitude can vary between 60 meters to 100 meters
+#The world generates square patches with sizes ranging between (1,10)
+
+		self.WORLD_XS = [100, 1100] #World Boundaries (X Axis)
+		self.WORLD_YS = [100, 350] #World Boundaries (Y Axis)
+		self.WORLD_ZS = [60, 100] #World Boundaries (Z Axis)
 
 		self.SEEDS = 20 #Number of Goals/Objectives
 
-
 		self.square_size_range = (1,10)
+
 		self.FRAME_W = 350
 		self.FRAME_H = 250
 
