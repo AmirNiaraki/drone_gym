@@ -30,10 +30,15 @@ import time
 from configurations import Configs
 import pickle
 
-
+"""
+Drone Environement Class
+    ... many instance variables
+"""
 class droneEnv(gym.Env):
-    
     def __init__(self, name, render=False):
+        """
+        Constructor
+        """
         # super(droneEnv, self).__init__()
         super().__init__()
         self.cfg=Configs()       
@@ -41,9 +46,13 @@ class droneEnv(gym.Env):
         self.render=render
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
-        self.world=self.world_genertor()
-        # np.save('test_world', self.world)
-        # self.world=np.load('test_world.npy')
+
+        # generates a new world
+        # self.world=self.world_genertor()
+        # np.save('test_world_1', self.world)
+
+        # load an existing world
+        self.world=np.load('test_world_1.npy')
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -77,7 +86,17 @@ class droneEnv(gym.Env):
         time.sleep(0.01)
         print('environment is initialized')        
         
+    
     def update_frame (self):
+        """
+        Does some multithreading stuff...
+        Is called once during constructor, and once during reset().
+        Calculates drone's frame size, based on FOV and height.
+        Concatenates battery to edge of the frame.
+        Defines self.frame
+
+        TODO: Should probably be part of the constructor
+        """
         self.imager_thread_name=threading.current_thread()
         print('top of the thread')
         while self.done==False:
@@ -87,9 +106,10 @@ class droneEnv(gym.Env):
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+
+            # battery pixels stuff
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
-
             added_battery=self.concat_battery(resized)
             self.frame=added_battery
             
@@ -100,13 +120,22 @@ class droneEnv(gym.Env):
         # print('Frame Update stopping...  ',  self.imager_thread_name)
 
     def fetch_frame(self):
+        """
+        Returns frame of what the drone is currently seeing
+        """
         return self.frame
     
     def fetch_anomaly(self):
+        """
+        Checks self.frame for rewards (black pixels), and then removes them from the world (we think).
+
+        Returns: # of black pixels
+        """
         observation=self.fetch_frame()
         nobat=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
         
         score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(nobat/255, dtype=np.int32)
+        
         ### removing the detected objects from the world!!!
         self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
         
@@ -116,17 +145,23 @@ class droneEnv(gym.Env):
 
 
         
-    def step(self, action, DISPLAY=False):
+    def step(self, action, DISPLAY=True):
         '''
-    defining navigation:     
-    let's assume each step takes 1 second and moves the agent for =1 (s) * V (m/s)    
-    the idea is that action is the absolute velocity. now if you have a heavy wind the cost will be higher
-    but the absolute velocity won't change.
+        Moves drone and calculates reward based on seen anomalies and cost of move. Can print info to terminal if DISPLAY=True.
+        
+        Returns: observation (array of location, battery, wind), self.reward, self.info
+
+        Amir's Notes:
+        defining navigation:     
+        let's assume each step takes 1 second and moves the agent for =1 (s) * V (m/s)    
+        the idea is that action is the absolute velocity. now if you have a heavy wind the cost will be higher
+        but the absolute velocity won't change.
         '''
         self.action=action     
         self.reward=0
         self.abs_velocity=self.action
         
+        # Move the Drone
         if  self.abs_velocity[0]<0:
             self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
         else:
@@ -144,24 +179,21 @@ class droneEnv(gym.Env):
              
         self.reward =- self.move_cost()
                
+        # Check if battery is empty
         if self.battery<1:
              self.reward-=10
              self.done=True
              self.close()
          
-       
+        # Renderer?
         if self.render==True and self.done==False:
             self.renderer()
-
-
-        time.sleep(0.001)  
-        # exit()
-            
+        time.sleep(0.001)  # Probably have to wait for renderer or something
+        
+        # Add any anomalies to reward with fetch_anomaly.
         self.reward+=self.fetch_anomaly()
         self.total_reward+=self.reward
         self.step_count+=1
-        # print('STEP MTHD, count: ', self.step_count)
-
         # if self.fetch_anomaly()>0:
         #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
         #     print('Total rewards is:', self.total_reward)
@@ -184,8 +216,11 @@ class droneEnv(gym.Env):
          
 ###############################################################################   
     def reset(self):
-### for COARSE Coding there is an auxiliary function to get location from state
-        # print('\n \n \n \n  reset happened!!! \n \n \n \n')
+        """
+
+        
+        Amir: for COARSE Coding there is an auxiliary function to get location from state
+        """
         print('number of active threads:', threading.active_count())        
         self.close()
 
@@ -199,8 +234,8 @@ class droneEnv(gym.Env):
         # self.location = self.cfg.init_location
         self.location = [100.,100.,60.]
 
-        self.world=self.world_genertor()
-        # self.world=np.load('test_world.npy')
+        # self.world=self.world_genertor()
+        self.world=np.load('test_world_1.npy')
 
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
@@ -216,6 +251,10 @@ class droneEnv(gym.Env):
         return observation
       
     def world_genertor(self):
+        """
+        Generates a new world for the drone based on size and # seeds specified in configurations.py
+        """
+
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
         size=(self.cfg.WORLD_YS[1]+self.cfg.PADDING,self.cfg.WORLD_XS[1]+self.cfg.PADDING)
@@ -237,6 +276,9 @@ class droneEnv(gym.Env):
         return self.world
 
     def loc_from_state(self):
+        """
+        I don't understand the purpose of this method.
+        """
         state_x_size=(self.cfg.WORLD_XS[1]-self.cfg.WORLD_XS[0])/self.cfg.STATES_X
         state_y_size=(self.cfg.WORLD_YS[1]-self.cfg.WORLD_YS[0])/self.cfg.STATES_Y
         state_z_size=(self.cfg.WORLD_YS[1]-self.cfg.WORLD_YS[0])/self.cfg.STATES_Z
@@ -245,15 +287,25 @@ class droneEnv(gym.Env):
         return loc
     
     def close(self):
+        """
+        End the simulation and clean stuff up
+
+        TODO: I think this method needs to override close from gym.env
+        """
         # print('trying to close the env and destroy windows...')
         self.done=True
         time.sleep(0.1)
         self.imager_thread_name.join()
         cv2.destroyAllWindows()
         
-        
-### method receives frame as np array adds a column the end that represent battery level    
     def concat_battery(self, input_frame):
+        """
+        Amir: Receives frame as np array, adds a column the end that represent battery level
+
+        Parameters: input_frame
+
+        Returns: output_frame (input with added battery info)
+        """
         full_pixels_count=int(self.cfg.FRAME_H*self.battery/100)
         full_pixels=np.zeros([full_pixels_count, 1])
         full_pixels.astype(int)
@@ -265,6 +317,11 @@ class droneEnv(gym.Env):
         return self.output_frame
         
     def move_cost(self):
+        """
+        Calculates move cost. Depends on action taken, wind, drag (from drag_table). Applies cost to the battery.
+
+        Returns: self.cost
+        """
         #finding the relative angle of wind to drone
         # print('inside move_cost() method \n actions: ', self.action[0] , self.action[1], 'winds: ', self.wind[0], self.wind[1])
         self.wind_angle=degrees(acos((self.action[0]*self.wind[0]+self.action[1]*self.wind[1])
@@ -282,13 +339,19 @@ class droneEnv(gym.Env):
 ### method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
-        # print('step cost: ', self.cost)
-        if self.battery_inloop==True:
-            self.battery=max(0,self.battery-self.cost)
+        ########### UNCOMMENT TO APPLY COST TO BATTERY ###########
+        # if self.battery_inloop==True:
+            # self.battery=max(0,self.battery-self.cost)
             # print(self.battery)
-        return self.cost
+
+        
+        # return self.cost
+        return 0
  
     def renderer(self):
+        """
+            Renders the world in a window.
+        """
         try:
             cv2.imshow('just fetched', self.fetch_frame())
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
@@ -313,6 +376,9 @@ class droneEnv(gym.Env):
          
     
     def display_info(self):
+        """
+        Prints info to terminal, if DISPLAY=True in step method.
+        """
         print('==== INFO ==== \n')
         # print('step count: ', self.step_count)
         # print('battery level: ', self.battery)
