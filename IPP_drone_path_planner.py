@@ -4,14 +4,10 @@ Created on Sun Nov  6 15:35:20 2022
 
 @author: aniaraki
 
-
-----> X
-|
-Y
 """
-import gym 
+import gym
 from gym import Env
-from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete 
+from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete
 import numpy as np
 import pandas as pd
 from math import tan, radians, degrees, acos, sqrt
@@ -25,7 +21,6 @@ from threading import Thread
 import threading
 from sys import exit
 import sys
-
 import time
 from configurations import Configs
 import pickle
@@ -42,8 +37,8 @@ class droneEnv(gym.Env):
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
         self.world=self.world_genertor()
-        # np.save('test_world', self.world)
-        # self.world=np.load('test_world.npy')
+         #np.save('test_world1', self.world)
+         #self.world=np.load('test_world1.npy')
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -59,8 +54,7 @@ class droneEnv(gym.Env):
         if self.name=='cont':
             # self.observation_space = Box(low=0, high=255,
             #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-            self.observation_space=Box(low=-2000, high=2000,
-                                       shape=(6,), dtype=np.float64)
+            self.observation_space=Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
             
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
         if self.name=='disc':
@@ -147,7 +141,7 @@ class droneEnv(gym.Env):
         if self.battery<1:
              self.reward-=10
              self.done=True
-             self.close()
+             #self.close()
          
        
         if self.render==True and self.done==False:
@@ -283,9 +277,9 @@ class droneEnv(gym.Env):
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
         # print('step cost: ', self.cost)
-        if self.battery_inloop==True:
-            self.battery=max(0,self.battery-self.cost)
-            # print(self.battery)
+        # if self.battery_inloop==True:
+        #     self.battery=max(0,self.battery-self.cost)
+        #     # print(self.battery)
         return self.cost
  
     def renderer(self):
@@ -324,8 +318,3 @@ class droneEnv(gym.Env):
 
         
         print('========= \n')
-
-        
-        
-        
-   
