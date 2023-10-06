@@ -22,12 +22,12 @@ model.load(model_path)
 episodes=10 
 
 for ep in range(episodes):
-    obs=env.reset()
-    done=False
-    ep_reward=[]
-    while not done:
-        action, _= model.predict(obs)
-        obs, reward, done, info = env.step(action)
-        ep_reward.append(reward)
+	obs=env.reset()
+	done=False
+	ep_reward=[]
+	while not done:
+		action, _= model.predict(obs)
+		obs, reward, done, info = env.step(action)
+		ep_reward.append(reward)
 
-    print(sum(ep_reward))
+	print(sum(ep_reward))
