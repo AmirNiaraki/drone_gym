@@ -303,7 +303,7 @@ class droneEnv(gym.Env):
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
             self.done=True
-            self.close()        
+            self.close()
          
     
     def display_info(self):

@@ -21,6 +21,9 @@ from multiprocessing  import Process
 from sys import exit
 import time
 
+# import configurations
+# from configurations import Configs
+
 
 STATES_X = 100
 STATES_Y = 100
