@@ -22,7 +22,7 @@ class Configs:
         self.WORLD_YS=[100,400]
         self.WORLD_ZS=[60,100]
 
-        self.SEEDS=20
+        self.SEEDS=1000
         self.square_size_range=(1,10)
         self.FRAME_W=350
         self.FRAME_H=250

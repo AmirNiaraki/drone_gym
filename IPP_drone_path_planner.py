@@ -102,7 +102,7 @@ class droneEnv(gym.Env):
         while self.done==False:
             self.visible_x=tan(radians(self.cfg.FOV_X))*2*self.location[2]
             self.visible_y=tan(radians(self.cfg.FOV_Y))*2*self.location[2]
-            self.world_img=np.uint8((1-self.world)*255)
+            self.world_img=np.uint8((1-self.world)*255) # color inversion
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
@@ -132,12 +132,17 @@ class droneEnv(gym.Env):
         Returns: # of black pixels
         """
         observation=self.fetch_frame()
+
+        # drone view picture with no battery
         nobat=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
         
-        score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(nobat/255, dtype=np.int32)
+        # number of pixels - sum of black pixels
+        score=self.cfg.FRAME_H*self.cfg.FRAME_W - np.sum(nobat/255, dtype=np.int32)
         
-        ### removing the detected objects from the world!!!
-        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
+        # Remove the detected objects from the world
+        # Set everything equal to 0 because black and white is inverted in update_frame()
+        self.world[int(-self.visible_y/2+self.location[1]) : int(self.visible_y/2+self.location[1]),
+                   int(-self.visible_x/2+self.location[0]) : int(self.visible_x/2+self.location[0])] = 0
         
         return score
 
@@ -234,6 +239,7 @@ class droneEnv(gym.Env):
         # self.location = self.cfg.init_location
         self.location = [100.,100.,60.]
 
+        # TODO: remove this (need to figure out why it's here in the first place)
         # self.world=self.world_genertor()
         self.world=np.load('test_world_1.npy')
 
