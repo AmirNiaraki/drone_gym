@@ -4,14 +4,10 @@ Created on Sun Nov  6 15:35:20 2022
 
 @author: aniaraki
 
-
-----> X
-|
-Y
 """
-import gym 
+import gym
 from gym import Env
-from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete 
+from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete
 import numpy as np
 import pandas as pd
 from math import tan, radians, degrees, acos, sqrt
@@ -25,7 +21,6 @@ from threading import Thread
 import threading
 from sys import exit
 import sys
-
 import time
 from configurations import Configs
 import pickle
@@ -68,8 +63,7 @@ class droneEnv(gym.Env):
         if self.name=='cont':
             # self.observation_space = Box(low=0, high=255,
             #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-            self.observation_space=Box(low=-2000, high=2000,
-                                       shape=(6,), dtype=np.float64)
+            self.observation_space=Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
             
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
         if self.name=='disc':
@@ -188,7 +182,7 @@ class droneEnv(gym.Env):
         if self.battery<1:
              self.reward-=10
              self.done=True
-             self.close()
+             #self.close()
          
         # Renderer?
         if self.render==True and self.done==False:
@@ -378,7 +372,7 @@ class droneEnv(gym.Env):
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
             self.done=True
-            self.close()        
+            self.close()
          
     
     def display_info(self):
@@ -396,8 +390,3 @@ class droneEnv(gym.Env):
 
         
         print('========= \n')
-
-        
-        
-        
-   
