@@ -46,11 +46,11 @@ class droneEnv(gym.Env):
         self.location=[100., 100., 60.]
 
         # Generates a new world
-        # self.world=self.world_genertor()
+        self.world_genertor()
         # np.save('test_world_1', self.world)
 
         # Load a saved world
-        self.world=np.load('test_world_1.npy')
+        # self.world=np.load('test_world_1.npy')
 
         # Wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind = (3.5, 0)       
@@ -78,7 +78,7 @@ class droneEnv(gym.Env):
                    
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
-        self.thread=Thread(target=self.update_frame, args=(),daemon=True)
+        self.thread=Thread(target=self.update_frame, args=(), daemon=True)
         self.thread.start()
         time.sleep(0.01)
         print('environment is initialized')        
@@ -86,13 +86,10 @@ class droneEnv(gym.Env):
     
     def update_frame (self):
         """
-        Does some multithreading stuff...
-        Is called once during constructor, and once during reset().
-        Calculates drone's frame size, based on FOV and height.
-        Concatenates battery to edge of the frame.
-        Defines self.frame
+        Only called in a multithreading (???)
+        Updates self.frame based on variables from configurations determining what the drone can see
 
-        TODO: Should probably be part of the constructor
+        TODO: Why do we need to added the battery level on the size
 
         Parameters: - 
 
@@ -100,11 +97,11 @@ class droneEnv(gym.Env):
         """
         self.imager_thread_name = threading.current_thread()
         print('top of the thread')
-        while self.done == False:
+        while not self.done:
             self.visible_x = tan(radians(self.cfg.FOV_X)) * 2 * self.location[2]
             self.visible_y = tan(radians(self.cfg.FOV_Y)) * 2 * self.location[2]
             
-            # color inversion
+            # black/white inversion for display (not calculations)
             self.world_img = np.uint8((1 - self.world) * 255)
 
             # take snap of the sim based on location [x,y,z]
@@ -114,23 +111,16 @@ class droneEnv(gym.Env):
                                int(-self.visible_x/2+self.location[0]),
                                int(self.visible_x/2+self.location[0])]
 
-            # battery pixels stuff
+            # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
+
+            # Resizes that crop to the resolution of the drone (upscale)
+            # TODO: Is this necessary? 
             resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
             added_battery = self.concat_battery(resized)
-            self.frame = added_battery
-            
-            if self.done == True:
-                break
+            # self.frame = added_battery
+            self.frame = resized
 
-    def fetch_frame(self):
-        """
-        Parameters: -
-
-        Returns: frame (what the drone is currently seeing)
-        """
-        return self.frame
-    
     def fetch_anomaly(self):
         """
         Checks self.frame for rewards (black pixels), and then removes them from the world (we think).
@@ -139,16 +129,28 @@ class droneEnv(gym.Env):
 
         Returns: score (# of black pixels)
         """
-        observation = self.fetch_frame()
-
         # drone view picture with no battery
-        nobat = observation[0 : self.cfg.FRAME_H, 0 : self.cfg.FRAME_W]
+        nobat = (self.frame)[0 : self.cfg.FRAME_H, 0 : self.cfg.FRAME_W]
         
         # number of pixels - sum of black pixels
+        # nobat / 255 normalizes values black pixels = 1
         score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.sum(nobat / 255, dtype=np.int32)
         
         # Remove the detected objects from the world
         # Set everything equal to 0 because black and white is inverted in update_frame()
+
+        # Doesn't make sense to remove objects for real-world applications, can't just remove the object. Need to check if its been seen before
+        # PROPOSITION
+        # There is a real-world with unknown objects in it
+        # There is a drone 2d-array containing known objects it has seen
+        # Assumptions: the drone knows its location
+        # Psuedo code:
+        #   if(sees object)
+        #       if (known object based on its own location)
+        #           do nothing/continue
+        #       else
+        #           record where object is
+        #           calculate and apply reward
         self.world[int(-self.visible_y / 2 + self.location[1]) : int(self.visible_y / 2 + self.location[1]),
                    int(-self.visible_x / 2 + self.location[0]) : int(self.visible_x / 2 + self.location[0])] = 0
         
@@ -219,7 +221,7 @@ class droneEnv(gym.Env):
         info = {}
         
         # define observation        
-        # observation=self.fetch_frame()        
+        # observation=self.frame        
         observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
         observation = np.array(observation) 
 
@@ -258,8 +260,8 @@ class droneEnv(gym.Env):
         # self.location = [100.,100.,60.]
 
         # TODO: remove this (need to figure out why it's here in the first place)
-        # self.world=self.world_genertor()
-        self.world = np.load('test_world_1.npy')
+        self.world_genertor()
+        # self.world = np.load('test_world_1.npy')
 
         self.battery = self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward = 0
@@ -285,23 +287,36 @@ class droneEnv(gym.Env):
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame
         seeds = self.cfg.SEEDS
+
+        # tuple representing dimensions of world
         size = (self.cfg.WORLD_YS[1] + self.cfg.PADDING, self.cfg.WORLD_XS[1] + self.cfg.PADDING)
+
+        # initialize world with zeros
         self.world = np.zeros(size, dtype=int)
+
+        # set the middle pixel to one (one pixel worth of rewards)
+        self.world[200][200] = 1
+        self.world[150][150] = 1
+        self.world[175][175] = 1
+
+        return
+
         square_corners = []
-        for s in range(0, seeds):
+        for s in range(seeds):
              # Corner of each square corner=[x,y]
-             corner=[random.randint(self.cfg.PADDING, self.cfg.WORLD_XS[1]), random.randint(self.cfg.PADDING, self.cfg.WORLD_YS[1])]
+             corner=[random.randint(self.cfg.PADDING, self.cfg.WORLD_XS[1]),
+                     random.randint(self.cfg.PADDING, self.cfg.WORLD_YS[1])]
              # List of all square corners
              square_corners.append(corner)
              square_size = random.randint(self.cfg.square_size_range[0], self.cfg.square_size_range[1])
-             for i in range(0,square_size):
-                 for j in range(0,square_size):
+             for i in range(square_size):
+                 for j in range(square_size):
                      try:
                          self.world[corner[1] + j][corner[0] + i] = 1
                      except:
                          pass
                      
-        return self.world
+        # return self.world
 
     def loc_from_state(self):
         """
@@ -404,7 +419,7 @@ class droneEnv(gym.Env):
         Returns: -
         """
         try:
-            cv2.imshow('just fetched', self.fetch_frame())
+            cv2.imshow('just fetched', self.frame)
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
             img = cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)

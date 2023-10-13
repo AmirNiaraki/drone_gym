@@ -25,7 +25,7 @@ strides_x = int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
 strides_y = int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
 
 step_x = 5
-step_y = 5
+step_y = 35
 LTR = 1
 steps = 0
 rewards = []
