@@ -38,12 +38,12 @@ class droneEnv(gym.Env):
         """
         # super(droneEnv, self).__init__()
         super().__init__()
-        self.cfg = Configs()       
+        self.cfg = Configs()    
         self.name = name
         self.render = render
 
         # self.location=self.cfg.init_location
-        self.location=[100., 100., 60.]
+        self.location = [100., 100., 60.]
 
         # Generates a new world
         self.world_genertor()
@@ -52,9 +52,9 @@ class droneEnv(gym.Env):
         # Load a saved world
         # self.world=np.load('test_world_1.npy')
 
-        # Wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.wind = (3.5, 0)       
-        self.battery = self.cfg.FULL_BATTERY # [x,y,z,] m
+        
+        self.wind = self.cfg.DEFAULT_WIND       
+        self.battery = self.cfg.FULL_BATTERY
         self.done = False
         self.reward = 0
         self.total_reward = 0
@@ -113,9 +113,8 @@ class droneEnv(gym.Env):
 
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
-
+            
             # Resizes that crop to the resolution of the drone (upscale)
-            # TODO: Is this necessary? 
             resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
             added_battery = self.concat_battery(resized)
             # self.frame = added_battery
@@ -296,8 +295,8 @@ class droneEnv(gym.Env):
 
         # set the middle pixel to one (one pixel worth of rewards)
         self.world[200][200] = 1
-        self.world[150][150] = 1
-        self.world[175][175] = 1
+        # self.world[150][150] = 1
+        # self.world[175][175] = 1
 
         return
 
@@ -389,6 +388,7 @@ class droneEnv(gym.Env):
         # Finding the relative velocity of wind to drone in absolute value
         self.relative_velocity = sqrt((self.action[0] - self.wind[0]) ** 2 + (self.action[1] - self.wind[1]) ** 2)
         
+        # Try and calculated the relative velocity of the drone wrt wind * normalizing factor
         try: 
             self.drag = self.cfg.drag_table.iloc[round(self.wind_angle / 45.), round((self.relative_velocity - 12) / 5)] * self.drag_normalizer_coef
         except:
@@ -438,8 +438,7 @@ class droneEnv(gym.Env):
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
             self.done=True
-            self.close()
-         
+            self.close()       
     
     def display_info(self):
         """

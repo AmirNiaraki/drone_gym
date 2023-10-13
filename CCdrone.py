@@ -11,6 +11,17 @@ The following script takes in a RECTANGULAR image and generates the complete cov
 	3. Drone Speed
 	4. Wind Field
 	5. Altitude
+
+
+Serves as benchmark for other algorithms to beat.
+
+TO IMPROVE:
+	Ideally, the drone recieves a list of "keypoints" or coordinates to hit to accomplish complete coverage, taking into account front & side overlap.
+	The % overlap is a function of x_step, y_step.
+	To optimize, the drone's path should have the minimum number of turns. For example, it's best to be parallel to the longest edge.
+	TODO: Research how to generate optimized lawn-mower pathing.
+	TODO: Generate this optimized list of keypoints to cover a rectangle. Eventually a polygon.
+	TODO: Figure out the necessary padding.
 """
 from IPP_drone_path_planner import droneEnv
 import time
@@ -24,18 +35,18 @@ env = droneEnv('cont', render=True)
 strides_x = int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
 strides_y = int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
 
-step_x = 5
-step_y = 35
-LTR = 1
-steps = 0
+step_x 	= 5
+step_y 	= 35
+LTR 	= 1 	# Left-to-Right
+steps 	= 0
+num_iterations = 1
 rewards = []
 
-for i in range(1):
+for i in range(num_iterations):
 	som_obs=env.reset()
 	print('Iteration: ', i, '\n supposed location: ', env.location, 'configurations: ', env.cfg.init_location)
 
 	while True:
-
 		if LTR == 1:
 			while env.done == False and abs(env.location[0] - env.cfg.WORLD_XS[1]) > 1:
 				obs, reward, done, info =env.step([step_x,0,0])

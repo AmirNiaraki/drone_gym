@@ -14,20 +14,23 @@ class Configs:
         self.STATES_Y = 100
         self.STATES_Z = 1
         self.init_state = [1,1,1]
-        self.init_location = [100.,100.,60.]
+        
         
         # Lets define a 1000 m * 250 m = 60 acres world
         # Lets assume the flight altitude can vary between 60 to 100 m
         
         ### WORLD, REWARDS, and SIMULATION ###
-        # World dimensions
-        self.WORLD_XS = [100,900]         #World Boundaries (X Axis)
-        self.WORLD_YS = [100,400]         #World Boundaries (Y Axis)
-        self.WORLD_ZS = [60,100]          #World Boundaries (Z Axis)
-
         # World padding
         # The padded area of the world is were the drone cannot go to but may appear in the frame
+        # Needed so that the drone's view isn't outide of the world
+        # TODO: Needs to be calculated according the the drone's height and FOV. Move calculations from update_frame to here or droneEnv constructor
         self.PADDING = 100
+
+        # World dimensions
+        # TODO: tuples?
+        self.WORLD_XS = [self.PADDING, 900]         #World Boundaries (X Axis)
+        self.WORLD_YS = [self.PADDING, 400]         #World Boundaries (Y Axis)
+        self.WORLD_ZS = [self.PADDING, 1000]          #World Boundaries (Z Axis)
 
         # Number of seeds (for reward generation)
         self.SEEDS = 1000
@@ -43,9 +46,11 @@ class Configs:
         # How many steps per episode
         self.MAX_STEPS = 10000
         
-        
+
 
         ### DRONE ###
+        self.init_location = [200.0, 200.0, 300.0]
+
         self.FULL_BATTERY = 100.0
 
         # Maximum allowed drone speed
@@ -61,12 +66,12 @@ class Configs:
 
         ### DRONE CAMERA ###
         # Resolution of drone camera
-        self.FRAME_W = 350
-        self.FRAME_H = 250
+        self.FRAME_W = 300
+        self.FRAME_H = 200
 
         # Drone camera's FOV
         self.FOV_X = 60 / 2                 #degrees for halve of the field of view horizontaly
-        self.FOV_Y = 47 / 2                 #degrees for halve of the field of view verticaly
+        self.FOV_Y = 40 / 2                 #degrees for halve of the field of view verticaly
 
         # Drone Camera FPS
         self.FPS = 30
