@@ -7,7 +7,7 @@ Created on Thu Nov 10 00:38:41 2022
 
 from stable_baselines3 import PPO, A2C
 import os
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
 import time
 
 models_dir = f"Training/Models/{int(time.time())}/"
