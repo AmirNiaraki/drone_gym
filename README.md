@@ -6,7 +6,7 @@ To install requirements, run: `pip install requirements.txt`
 Simulates a drone flying a naive pass of the world 
 
 ### To Run
-`python CCdrone.py`
+`python complete_coverage.py`
 
 # Simulation Notes
 ## On the drag coefficient and flight duration (Amir)

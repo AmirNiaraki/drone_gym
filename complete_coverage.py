@@ -33,13 +33,11 @@ from math import tan, radians, degrees, acos, sqrt
 
 env = droneEnv('cont', render=True)
 
-# why is this here?
+# Number of strides necessary to cover rectangle (?)
 strides_x = int((env.cfg.WORLD_XS[1] - env.cfg.WORLD_XS[0]) / env.visible_x)
 strides_y = int((env.cfg.WORLD_YS[1] - env.cfg.WORLD_YS[0]) / env.visible_y)
 
 # step size should be calculated based on a target overlap % (75%)
-step_x 	= 5
-step_y 	= int(tan(radians(env.cfg.FOV_Y)) * 2 * env.location[2])
 LTR 	= 1 	# Left-to-Right
 steps 	= 0
 num_iterations = 1
@@ -52,21 +50,22 @@ for i in range(num_iterations):
 	while True and not env.done:
 		if LTR == 1:
 			while abs(env.location[0] - env.cfg.WORLD_XS[1]) > 1:
-				obs, reward, done, info = env.step([step_x, 0 ,0])
+				obs, reward, done, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 				steps += 1
 				rewards.append(reward)
 
 		if LTR == -1:
 			while abs(env.location[0] - env.cfg.WORLD_XS[0]) > 1:
-				obs, reward, done, info = env.step([step_x, 0 ,0 ])
+				obs, reward, done, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
 				steps += 1
 				rewards.append(reward)
 
-		step_x =- step_x
 		LTR = -LTR
 
 		if abs(env.location[1] - env.cfg.WORLD_YS[1]) > 1:
-			obs, reward, done, info = env.step([0, step_y, 0])
+			obs, reward, done, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
 		else:
 			break
+
+	num_iterations += 1
 env.close()

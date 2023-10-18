@@ -11,6 +11,7 @@ from math import tan, radians, degrees, acos, sqrt
 
 class Configs:
     def __init__(self):
+        # See loc_from_state in drone_environment
         self.STATES_X = 100
         self.STATES_Y = 100
         self.STATES_Z = 1
@@ -74,15 +75,16 @@ class Configs:
         # Drone's location starting location
         self.init_location = [self.PADDING_X,
                               self.PADDING_Y,
-                              200.0]
+                              60.0]
 
         self.FULL_BATTERY = 100.0
 
         # Maximum allowed drone speed
         self.MAX_SPEED = 5
 
-        # Percent overlap (TODO: Shouldn't this be calculated?)
-        self.OVERLAP = 0.5
+        # Percent overlap
+        # Should be in range (0,1) exclusive
+        self.OVERLAP = 0.75
 
         # Drone's drag
         self.drag_table = pd.read_csv('drag_dataset.csv', index_col=0)
