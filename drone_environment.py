@@ -42,8 +42,7 @@ class droneEnv(gym.Env):
         self.name = name
         self.render = render
 
-        # self.location=self.cfg.init_location
-        self.location = [100., 100., 60.]
+        self.location=self.cfg.init_location
 
         # Generates a new world
         self.world_genertor()
@@ -83,7 +82,6 @@ class droneEnv(gym.Env):
         time.sleep(0.01)
         print('environment is initialized')        
         
-    
     def update_frame (self):
         """
         Only called in a multithreading (???)
@@ -98,6 +96,7 @@ class droneEnv(gym.Env):
         self.imager_thread_name = threading.current_thread()
         print('top of the thread')
         while not self.done:
+            # Recalculate drone's field of view
             self.visible_x = tan(radians(self.cfg.FOV_X)) * 2 * self.location[2]
             self.visible_y = tan(radians(self.cfg.FOV_Y)) * 2 * self.location[2]
             
@@ -106,10 +105,10 @@ class droneEnv(gym.Env):
 
             # take snap of the sim based on location [x,y,z]
             # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            self.boundaries = [int(-self.visible_y/2+self.location[1]),
-                               int(self.visible_y/2+self.location[1]),
-                               int(-self.visible_x/2+self.location[0]),
-                               int(self.visible_x/2+self.location[0])]
+            self.boundaries = [int(-self.visible_y /2 + self.location[1]),
+                               int( self.visible_y /2 + self.location[1]),
+                               int(-self.visible_x /2 + self.location[0]),
+                               int( self.visible_x /2 + self.location[0])]
 
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
@@ -188,7 +187,7 @@ class droneEnv(gym.Env):
         
         # z-direction
         if  self.abs_velocity[2] < 0:
-            self.location[2] = max(self.location[2] + self.abs_velocity[2],self.cfg. WORLD_ZS[0])  
+            self.location[2] = max(self.location[2] + self.abs_velocity[2], self.cfg.WORLD_ZS[0])  
         else:
             self.location[2] = min(self.location[2] + self.abs_velocity[2], self.cfg.WORLD_ZS[1])
              
@@ -231,8 +230,6 @@ class droneEnv(gym.Env):
         
         return observation, self.reward, self.done, info
          
-         
-###############################################################################   
     def reset(self):
         """
         End and close current simulation. Start a new simulation with reinitialized vars.
@@ -280,15 +277,13 @@ class droneEnv(gym.Env):
         Generates a new world for the drone based on size and # seeds specified in configurations.py
 
         Parameters: -
-
-        Returns: self.world (TODO: why? just update self.world?)
         """
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame
         seeds = self.cfg.SEEDS
 
         # tuple representing dimensions of world
-        size = (self.cfg.WORLD_YS[1] + self.cfg.PADDING, self.cfg.WORLD_XS[1] + self.cfg.PADDING)
+        size = (self.cfg.WORLD_YS[1] + self.cfg.PADDING_Y, self.cfg.WORLD_XS[1] + self.cfg.PADDING_X)
 
         # initialize world with zeros
         self.world = np.zeros(size, dtype=int)
@@ -298,13 +293,13 @@ class droneEnv(gym.Env):
         # self.world[150][150] = 1
         # self.world[175][175] = 1
 
-        return
 
         square_corners = []
         for s in range(seeds):
              # Corner of each square corner=[x,y]
-             corner=[random.randint(self.cfg.PADDING, self.cfg.WORLD_XS[1]),
-                     random.randint(self.cfg.PADDING, self.cfg.WORLD_YS[1])]
+             corner=[random.randint(-self.cfg.PADDING_X, self.cfg.WORLD_XS[1]) + self.cfg.PADDING_X,
+                     random.randint(-self.cfg.PADDING_Y, self.cfg.WORLD_YS[1]) + self.cfg.PADDING_Y]
+             
              # List of all square corners
              square_corners.append(corner)
              square_size = random.randint(self.cfg.square_size_range[0], self.cfg.square_size_range[1])
@@ -314,8 +309,6 @@ class droneEnv(gym.Env):
                          self.world[corner[1] + j][corner[0] + i] = 1
                      except:
                          pass
-                     
-        # return self.world
 
     def loc_from_state(self):
         """
