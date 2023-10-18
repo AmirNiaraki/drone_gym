@@ -70,10 +70,11 @@ class Configs:
 
 
         ### DRONE ###
-        # Actual drone location
+
+        # Drone's location starting location
         self.init_location = [self.PADDING_X,
                               self.PADDING_Y,
-                              150.0]
+                              200.0]
 
         self.FULL_BATTERY = 100.0
 

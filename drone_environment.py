@@ -87,7 +87,7 @@ class droneEnv(gym.Env):
         Only called in a multithreading (???)
         Updates self.frame based on variables from configurations determining what the drone can see
 
-        TODO: Why do we need to added the battery level on the size
+        TODO: Why do we need to added the battery level on the side
 
         Parameters: - 
 
@@ -287,12 +287,6 @@ class droneEnv(gym.Env):
 
         # initialize world with zeros
         self.world = np.zeros(size, dtype=int)
-
-        # set the middle pixel to one (one pixel worth of rewards)
-        self.world[200][200] = 1
-        # self.world[150][150] = 1
-        # self.world[175][175] = 1
-
 
         square_corners = []
         for s in range(seeds):
