@@ -31,7 +31,7 @@ class Configs:
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
-        self.desired_world_size=[1000,500]
+        self.desired_world_size=[2000,500]
         self.WORLD_XS=[self.PADDING, self.desired_world_size[0]-self.PADDING]
         self.WORLD_YS=[self.PADDING, self.desired_world_size[1]-self.PADDING]
         self.WORLD_ZS=[60,100]

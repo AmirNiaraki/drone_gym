@@ -40,7 +40,6 @@ class droneEnv(gym.Env):
         self.mode=mode
         self.render=render
         self.location=self.cfg.init_location.copy()
-
         self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
 
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
@@ -56,8 +55,8 @@ class droneEnv(gym.Env):
         
         self.action=[0,0,0]
         if self.mode=='cont':
-            self.observation_space = Box(low=0, high=255,
-                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+            self.observation_space = Box(low=0, high=1,
+                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8) #NOTE: dtype has to change for non binary image
             # self.observation_space=Box(low=-2000, high=2000,
             #                            shape=(6,), dtype=np.float64)  
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
@@ -95,6 +94,7 @@ class droneEnv(gym.Env):
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
                              int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
+
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
             #         
             added_battery=self.concat_battery(resized)
@@ -123,7 +123,7 @@ class droneEnv(gym.Env):
         # scor eis simply the number of black pixels
         score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(obs_with_no_battery/255, dtype=np.int32)
         ### removing the detected objects from the world!!!
-        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]),
+        self.world [int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]),
                     int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
         return score
 
@@ -190,10 +190,12 @@ class droneEnv(gym.Env):
         
 ### defining observation
         if self.mode=='cont':
-            observation=self.fetch_frame()  
+            #making sure the image values are normalized
+            observation=self.fetch_frame()/255
+            observation=np.array(observation, dtype=np.uint8)
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-            observation = np.array(observation) 
+            observation = np.array(observation , dtype=np.float64) 
         
         if DISPLAY==True:
             self.display_info()
@@ -203,6 +205,7 @@ class droneEnv(gym.Env):
         # print('step count: ', self.step_count)
         # print(' x size on world: ', self.visible_x)
         # print( 'y size on world: ', self.visible_y)
+
 
         return observation, self.reward, self.done, info
 
@@ -258,11 +261,12 @@ class droneEnv(gym.Env):
 
 ### defining observation
         if self.mode=='cont':
-            observation=self.fetch_frame()  
+            observation=self.fetch_frame()/255
+            observation=np.array(observation, dtype=np.uint8)
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-            observation = np.array(observation) 
-        
+            observation = np.array(observation , dtype=np.float64)
+
         return observation
       
     def world_genertor(self):
