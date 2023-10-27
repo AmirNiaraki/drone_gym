@@ -12,7 +12,9 @@ from IPP_drone_path_planner import droneEnv
 class WorldDrawer(droneEnv):
     def __init__(self):
         super().__init__('cont', render=True)
-        self.size=(self.cfg.WORLD_YS[1]+self.cfg.PADDING,self.cfg.WORLD_XS[1]+self.cfg.PADDING)
+        print(type(self.cfg.WORLD_YS[1]+self.cfg.PADDING), type(self.cfg.WORLD_YS[1]), type(self.cfg.PADDING))
+        self.size=(int(self.cfg.WORLD_YS[1]+self.cfg.PADDING),int(self.cfg.WORLD_XS[1]+self.cfg.PADDING))
+        print(type(self.cfg.PADDING))
         self.world=np.zeros(self.size, dtype=int)
         self.world_img=np.uint8((1-self.world)*255)
         self.black_list=[]
@@ -22,7 +24,7 @@ class WorldDrawer(droneEnv):
 
 
 
-    def show_empty_world(self):
+    def show_world(self):
         cv2.imshow(self.window_name, self.world_img)
         while True:
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -52,7 +54,7 @@ class WorldDrawer(droneEnv):
             self.world[self.black_list[i][1]-self.thickness:self.black_list[i][1]+self.thickness,
                        self.black_list[i][0]-self.thickness:self.black_list[i][0]+self.thickness]=1
         self.world_img=np.uint8((1-self.world)*255)
-        self.show_empty_world()
+        self.show_world()
 
     def write_to_file(self):
         cv2.imwrite('drawn_world.png', self.world_img)

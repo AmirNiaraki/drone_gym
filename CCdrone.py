@@ -39,7 +39,7 @@ for i in range(1):
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[1])>1:
                 
                     obs, reward, done, info =env.step([step_x,0,0])
-        
+                    print(f'step: {steps}, reward: {reward}')
                     steps+=1
                     rewards.append(reward)
 
@@ -48,6 +48,7 @@ for i in range(1):
     
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[0])>1:
                     obs, reward, done, info =env.step([step_x,0,0])
+                    print(f'step: {steps}, reward: {reward}')
                     steps+=1
                     rewards.append(reward)      
         
@@ -58,8 +59,11 @@ for i in range(1):
         
         if env.done==False and abs(env.location[1]-env.cfg.WORLD_YS[1])>1:   
             obs, reward, done, info =env.step([0,step_y,0])
+            print(f'step: {steps}, reward: {reward}')
         else: 
             break
+        
+
 
 
 

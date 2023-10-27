@@ -33,19 +33,15 @@ import pickle
 
 class droneEnv(gym.Env):
     
-    def __init__(self, name, render=False):
+    def __init__(self, mode, render=False):
         # super(droneEnv, self).__init__()
         super().__init__()
         self.cfg=Configs()       
-        self.name=name
+        self.mode=mode
         self.render=render
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
-        self.world=self.world_genertor()
-        
-        # np.save('test_world', self.world)
-        # self.world=np.load('test_world.npy')
-
+        self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
 
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
@@ -54,19 +50,19 @@ class droneEnv(gym.Env):
         self.reward=0
         self.total_reward=0
         self.step_count=0
-        self.battery_inloop=True
+        self.battery_inloop=False
 
         self.drag_normalizer_coef=0.5
         
         self.action=[0,0,0]
-        if self.name=='cont':
-            # self.observation_space = Box(low=0, high=255,
-            #                         shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-            self.observation_space=Box(low=-2000, high=2000,
-                                       shape=(6,), dtype=np.float64)
-            
+        if self.mode=='cont':
+            self.observation_space = Box(low=0, high=255,
+                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+            # self.observation_space=Box(low=-2000, high=2000,
+            #                            shape=(6,), dtype=np.float64)  
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-        if self.name=='disc':
+
+        if self.mode=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
@@ -90,11 +86,17 @@ class droneEnv(gym.Env):
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
-            crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
             
-            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
+            # !!!! Sanity Check:!!!!
+            # print('the boundaries are not proportional with altittude!!!:')
 
+            # self.boundaries=[int(-self.cfg.FRAME_H/2+self.location[1]),int(self.cfg.FRAME_H/2+self.location[1]), int(-self.cfg.FRAME_W/2+self.location[0]),int(self.cfg.FRAME_W/2+self.location[0])]            
+            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
+            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
+            #         
             added_battery=self.concat_battery(resized)
+
             self.frame=added_battery
             
             if self.done==True:
@@ -107,13 +109,20 @@ class droneEnv(gym.Env):
         return self.frame
     
     def fetch_anomaly(self):
+        """
+        This method is used to calculate the reward for the agent by counting the black pixels. 
+        Additionally it sets the observed anomaly to 0 in the world.
+        returns: 
+        score (int); number of black pixels in the frame
+        """
         observation=self.fetch_frame()
-        nobat=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
-        
-        score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(nobat/255, dtype=np.int32)
+        # refers to image with no battery
+        obs_with_no_battery=observation[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
+        # scor eis simply the number of black pixels
+        score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(obs_with_no_battery/255, dtype=np.int32)
         ### removing the detected objects from the world!!!
-        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
-        
+        self.world[int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]),
+                    int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
         return score
 
 
@@ -156,9 +165,10 @@ class droneEnv(gym.Env):
        
         if self.render==True and self.done==False:
             self.renderer()
+            time.sleep(self.cfg.sleep_time) if self.cfg.sleep_time>0 else None  
 
 
-        time.sleep(0.001)  
+        
         # exit()
             
         self.reward+=self.fetch_anomaly()
@@ -173,11 +183,13 @@ class droneEnv(gym.Env):
         self.reward.astype(np.float32)
         info={}
         
-### defining observation        
-        # observation=self.fetch_frame()        
-        observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation) 
-
+### defining observation
+        if self.mode=='cont':
+            observation=self.fetch_frame()  
+        else:
+            observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+            observation = np.array(observation) 
+        
         if DISPLAY==True:
             self.display_info()
         if self.cfg.MAX_STEPS<self.step_count:
@@ -224,11 +236,9 @@ class droneEnv(gym.Env):
         self.thread.start()
 
         # self.location = self.cfg.init_location
-        self.location = [100.,100.,60.]
+        self.location = self.cfg.init_location
 
-        self.world=self.world_genertor()
-        # self.world=np.load('test_world.npy')
-
+        self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
         self.total_reward=0
@@ -237,8 +247,12 @@ class droneEnv(gym.Env):
         self.prev_reward=0
         self.score = 0 
 
-        observation=[self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation) 
+### defining observation
+        if self.mode=='cont':
+            observation=self.fetch_frame()  
+        else:
+            observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+            observation = np.array(observation) 
         
         return observation
       
@@ -262,6 +276,12 @@ class droneEnv(gym.Env):
                          pass
                      
         return self.world
+
+    def load_world(self):
+        _w=np.load(self.cfg.world_path)
+        print('world loaded from file')
+        return _w
+
 
     def loc_from_state(self):
         state_x_size=(self.cfg.WORLD_XS[1]-self.cfg.WORLD_XS[0])/self.cfg.STATES_X
@@ -305,16 +325,17 @@ class droneEnv(gym.Env):
             print('relative velocity/angles out of bounds.')
             # defualt drag
             self.drag=0.1*self.drag_normalizer_coef
-        self.cost=self.drag*self.relative_velocity**2
+        cost=self.drag*self.relative_velocity**2
         
 ### method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
-        # print('step cost: ', self.cost)
         if self.battery_inloop==True:
-            self.battery=max(0,self.battery-self.cost)
+            self.battery=max(0,self.battery-cost)
+            return cost
+        else:
             # print(self.battery)
-        return self.cost
+            return 0
  
     def renderer(self):
         try:
@@ -339,7 +360,7 @@ class droneEnv(gym.Env):
             self.done=True
             self.close()        
          
-    
+
     def display_info(self):
         print('==== INFO ==== \n')
         # print('step count: ', self.step_count)
