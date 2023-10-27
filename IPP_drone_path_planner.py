@@ -50,7 +50,7 @@ class droneEnv(gym.Env):
         self.reward=0
         self.total_reward=0
         self.step_count=0
-        self.battery_inloop=False
+        self.battery_inloop=True if self.cfg.battery_inloop else False
 
         self.drag_normalizer_coef=0.5
         
@@ -85,13 +85,15 @@ class droneEnv(gym.Env):
             self.world_img=np.uint8((1-self.world)*255)
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
+                             int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
 
             # !!!! Sanity Check:!!!!
             # print('the boundaries are not proportional with altittude!!!:')
 
             # self.boundaries=[int(-self.cfg.FRAME_H/2+self.location[1]),int(self.cfg.FRAME_H/2+self.location[1]), int(-self.cfg.FRAME_W/2+self.location[0]),int(self.cfg.FRAME_W/2+self.location[0])]            
-            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
+                             int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
             #         
@@ -203,7 +205,7 @@ class droneEnv(gym.Env):
         # print( 'y size on world: ', self.visible_y)
 
         return observation, self.reward, self.done, info
- 
+
     def renderer(self):
         try:
             cv2.imshow('just fetched', self.fetch_frame())
@@ -213,8 +215,8 @@ class droneEnv(gym.Env):
             img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (50,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
             img=cv2.putText(img, 'wind direction: '+ str(self.wind_angle), (50,110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
             img=cv2.putText(img, 'flight altitude: '+ str(self.location[2]), (50,140), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-
             cv2.imshow('World view', img)
+
 
             
         except:

@@ -21,12 +21,13 @@ class Configs:
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=45/2 #degrees for halve of the field of view verticaly
-        self.FRAME_W=70
-        self.FRAME_H=50
+        self.FRAME_W=70 #unit: pixels
+        self.FRAME_H=50 #unit: pixels
 
         self.PADDING_flt = max(self.FRAME_H,self.FRAME_W)//2 #padding for the world: scalar value
+        self.PADDING_flt = 150.0
         self.PADDING = int(self.PADDING_flt)
-        self.init_location=[self.PADDING,self.PADDING,60.]
+        self.init_location=[self.PADDING,self.PADDING,100.]
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
@@ -48,7 +49,7 @@ class Configs:
         self.DEFAULT_WIND=(3.5,0.)
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         self.drag_table=pd.read_csv('drag_dataset.csv', index_col=0)
-        
+        self.battery_inloop=False
         ### how many steps per episode
         self.MAX_STEPS=1000000
         self.sleep_time=0
