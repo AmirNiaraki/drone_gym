@@ -42,8 +42,11 @@ class droneEnv(gym.Env):
         # self.location=self.cfg.init_location
         self.location=[100.,100.,60.]
         self.world=self.world_genertor()
+        
         # np.save('test_world', self.world)
         # self.world=np.load('test_world.npy')
+
+
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -88,6 +91,7 @@ class droneEnv(gym.Env):
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
+            
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
 
             added_battery=self.concat_battery(resized)
@@ -302,6 +306,7 @@ class droneEnv(gym.Env):
             # defualt drag
             self.drag=0.1*self.drag_normalizer_coef
         self.cost=self.drag*self.relative_velocity**2
+        
 ### method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
