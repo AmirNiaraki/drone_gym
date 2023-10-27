@@ -14,7 +14,7 @@ from gym import Env
 from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete 
 import numpy as np
 import pandas as pd
-from math import tan, radians, degrees, acos, sqrt
+from math import tan, radians, degrees, acos, sqrt, ceil
 import random
 import os
 from stable_baselines3 import PPO
@@ -39,8 +39,8 @@ class droneEnv(gym.Env):
         self.cfg=Configs()       
         self.mode=mode
         self.render=render
-        # self.location=self.cfg.init_location
-        self.location=[100.,100.,60.]
+        self.location=self.cfg.init_location.copy()
+
         self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
 
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
@@ -80,13 +80,13 @@ class droneEnv(gym.Env):
         self.imager_thread_name=threading.current_thread()
         print('top of the thread')
         while self.done==False:
-            self.visible_x=tan(radians(self.cfg.FOV_X))*2*self.location[2]
-            self.visible_y=tan(radians(self.cfg.FOV_Y))*2*self.location[2]
+            self.visible_x=ceil(tan(radians(self.cfg.FOV_X))*2*self.location[2])
+            self.visible_y=ceil(tan(radians(self.cfg.FOV_Y))*2*self.location[2])
             self.world_img=np.uint8((1-self.world)*255)
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
-            
+
             # !!!! Sanity Check:!!!!
             # print('the boundaries are not proportional with altittude!!!:')
 
@@ -170,8 +170,11 @@ class droneEnv(gym.Env):
 
         
         # exit()
-            
-        self.reward+=self.fetch_anomaly()
+        _score=self.fetch_anomaly()
+        if _score>0:
+            print('step',self.step_count, '\n this reward: ', _score, '\n')
+        self.reward+=_score
+        # self.reward+=self.fetch_anomaly()
         self.total_reward+=self.reward
         self.step_count+=1
         # print('STEP MTHD, count: ', self.step_count)
@@ -194,7 +197,11 @@ class droneEnv(gym.Env):
             self.display_info()
         if self.cfg.MAX_STEPS<self.step_count:
             self.done=True
-        
+
+        # print('step count: ', self.step_count)
+        # print(' x size on world: ', self.visible_x)
+        # print( 'y size on world: ', self.visible_y)
+
         return observation, self.reward, self.done, info
  
     def renderer(self):
@@ -236,7 +243,7 @@ class droneEnv(gym.Env):
         self.thread.start()
 
         # self.location = self.cfg.init_location
-        self.location = self.cfg.init_location
+        self.location = self.cfg.init_location.copy()
 
         self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m

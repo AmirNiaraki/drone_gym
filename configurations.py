@@ -11,29 +11,34 @@ import pandas as pd
 class Configs:
     def __init__(self):
         self.is_world_generated=False
-        self.world_path='drawn_world_1.npy'
+        self.world_path='drawn_world.npy'
 
         self.STATES_X=100
         self.STATES_Y=100
         self.STATES_Z=1
         self.init_state=[1,1,1]
-        self.FRAME_W=200
-        self.FRAME_H=200
-        self.PADDING_flt=max(self.FRAME_H,self.FRAME_W)//2+1 #padding for the world: scalar value
-        self.PADDING=int(self.PADDING_flt)
+
+# TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
+        self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
+        self.FOV_Y=45/2 #degrees for halve of the field of view verticaly
+        self.FRAME_W=70
+        self.FRAME_H=50
+
+        self.PADDING_flt = max(self.FRAME_H,self.FRAME_W)//2 #padding for the world: scalar value
+        self.PADDING = int(self.PADDING_flt)
         self.init_location=[self.PADDING,self.PADDING,60.]
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
-        self.WORLD_XS=[self.PADDING,900]
-        self.WORLD_YS=[self.PADDING,400]
+        self.desired_world_size=[1000,500]
+        self.WORLD_XS=[self.PADDING, self.desired_world_size[0]-self.PADDING]
+        self.WORLD_YS=[self.PADDING, self.desired_world_size[1]-self.PADDING]
         self.WORLD_ZS=[60,100]
 
         self.SEEDS=20
         self.square_size_range=(1,10)
 
-        self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
-        self.FOV_Y=47/2 #degrees for halve of the field of view verticaly
+
         self.FULL_BATTERY=100.
         self.MAX_SPEED=5 #maximum allowed drone speed
         self.PADDING=max(self.FRAME_H,self.FRAME_W)/2 #padding for the world

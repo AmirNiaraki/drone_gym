@@ -61,6 +61,13 @@ class WorldDrawer(droneEnv):
         np.save('drawn_world', self.world)
         # self.world=np.load('test_world.npy')
         print('world saved to file')
+        self.calulcate_all_black_pixles()
+
+    def calulcate_all_black_pixles(self):
+        print(self.world.shape)
+
+        print('number of all black pixels are: ', np.sum(self.world))
+
 
 if __name__ == '__main__':
     wd = WorldDrawer()
