@@ -21,7 +21,7 @@ if not os.path.exists(logdir):
 	os.makedirs(logdir)
 
 # env = droneEnv('cont', render=True)
-env = droneEnv('cont', render=False)
+env = droneEnv(observation_mode='cont', action_mode='cont', render=False)
 now = datetime.now()
 
 # It will check your custom environment and output additional warnings if needed
@@ -39,10 +39,10 @@ if not os.path.exists(logdir):
 
 # env.reset()
 
-# model = PPO('CnnPolicy', env, verbose=1, tensorboard_log=logdir)
-model = DQN('CnnPolicy', env, verbose=1, buffer_size=5000, learning_starts=1000 ,tensorboard_log=logdir)
+model = A2C('CnnPolicy', env, verbose=1, tensorboard_log=logdir)
+# model = DQN('CnnPolicy', env, verbose=1, buffer_size=5000, learning_starts=1000 ,tensorboard_log=logdir)
 
-TIMESTEPS = 10000
+TIMESTEPS = 1000
 iters = 0
 
 while iters<1:

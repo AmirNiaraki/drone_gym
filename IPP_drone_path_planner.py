@@ -9,9 +9,9 @@ Created on Sun Nov  6 15:35:20 2022
 |
 Y
 """
-import gym 
-from gym import Env
-from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete 
+import gymnasium
+from gymnasium import Env
+from gymnasium.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete 
 import numpy as np
 import pandas as pd
 from math import tan, radians, degrees, acos, sqrt, ceil
@@ -31,14 +31,16 @@ from configurations import Configs
 import pickle
 
 
-class droneEnv(gym.Env):
+class droneEnv(gymnasium.Env):
     
-    def __init__(self, mode, render=False):
+    def __init__(self, observation_mode, action_mode,  render=False):
         # super(droneEnv, self).__init__()
         super().__init__()
         self.cfg=Configs()       
-        self.mode=mode
+        self.observation_mode=observation_mode
+        self.action_mode=action_mode
         self.render=render
+
         self.location=self.cfg.init_location.copy()
         self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
 
@@ -54,14 +56,17 @@ class droneEnv(gym.Env):
         self.drag_normalizer_coef=0.5
         
         self.action=[0,0,0]
-        if self.mode=='cont':
-            self.observation_space = Box(low=0, high=1,
-                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8) #NOTE: dtype has to change for non binary image
+        if self.observation_mode=='cont':
+            self.observation_space = Box(low=0, high=255,
+                                    shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1), dtype=np.uint8) #NOTE: dtype has to change for non binary image
             # self.observation_space=Box(low=-2000, high=2000,
             #                            shape=(6,), dtype=np.float64)  
+        if self.action_mode=='cont':
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-
-        if self.mode=='disc':
+        if self.action_mode=='disc':
+            self.action_space=Discrete(4)
+        
+        if self.observation_mode=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
@@ -140,24 +145,12 @@ class droneEnv(gym.Env):
         '''
         self.action=action     
         self.reward=0
-        self.abs_velocity=self.action
-        
-        if  self.abs_velocity[0]<0:
-            self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
-        else:
-            self.location[0]=min(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[1])
-        
-        if  self.abs_velocity[1]<0:
-            self.location[1]=max(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[0])  
-        else:
-            self.location[1]=min(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[1])
-        
-        if  self.abs_velocity[2]<0:
-            self.location[2]=max(self.location[2]+ self.abs_velocity[2],self.cfg. WORLD_ZS[0])  
-        else:
-            self.location[2]=min(self.location[2]+ self.abs_velocity[2], self.cfg.WORLD_ZS[1])
-             
-        self.reward =- self.move_cost()
+
+        if self.action_mode=='cont':
+            # new location is assigned and reward of movement is calculated (move_cost())
+            self.move_by_velocity()
+        if self.action_mode=='disc':
+            self.move_by_tile()
                
         if self.battery<1:
              self.reward-=10
@@ -185,14 +178,18 @@ class droneEnv(gym.Env):
         #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
         #     print('Total rewards is:', self.total_reward)
         
-        self.reward.astype(np.float32)
+        self.reward = float(self.reward)
         info={}
         
 ### defining observation
-        if self.mode=='cont':
+        if self.observation_mode=='cont':
             #making sure the image values are normalized
-            observation=self.fetch_frame()/255
+            observation=self.fetch_frame()
             observation=np.array(observation, dtype=np.uint8)
+            observation=observation.reshape((self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1))
+
+
+            
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
             observation = np.array(observation , dtype=np.float64) 
@@ -201,13 +198,33 @@ class droneEnv(gym.Env):
             self.display_info()
         if self.cfg.MAX_STEPS<self.step_count:
             self.done=True
-
         # print('step count: ', self.step_count)
         # print(' x size on world: ', self.visible_x)
         # print( 'y size on world: ', self.visible_y)
+        return observation, self.reward, self.done,  self.done, info # now needs both terminated and turncated booleans, passed done for both.
 
 
-        return observation, self.reward, self.done, info
+
+    def move_by_velocity(self):
+        self.abs_velocity=self.action
+        
+        if  self.abs_velocity[0]<0:
+            self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
+        else:
+            self.location[0]=min(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[1])
+        
+        if  self.abs_velocity[1]<0:
+            self.location[1]=max(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[0])  
+        else:
+            self.location[1]=min(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[1])
+        
+        if  self.abs_velocity[2]<0:
+            self.location[2]=max(self.location[2]+ self.abs_velocity[2],self.cfg. WORLD_ZS[0])  
+        else:
+            self.location[2]=min(self.location[2]+ self.abs_velocity[2], self.cfg.WORLD_ZS[1])
+             
+        self.reward =- self.move_cost()
+
 
     def renderer(self):
         try:
@@ -234,7 +251,7 @@ class droneEnv(gym.Env):
          
          
 ###############################################################################   
-    def reset(self):
+    def reset(self,**kwargs):
 ### for COARSE Coding there is an auxiliary function to get location from state
         # print('\n \n \n \n  reset happened!!! \n \n \n \n')
         print('number of active threads:', threading.active_count())        
@@ -260,14 +277,15 @@ class droneEnv(gym.Env):
         self.score = 0 
 
 ### defining observation
-        if self.mode=='cont':
-            observation=self.fetch_frame()/255
+        if self.observation_mode=='cont':
+            observation=self.fetch_frame()
             observation=np.array(observation, dtype=np.uint8)
+            observation=observation.reshape((self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1))
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
             observation = np.array(observation , dtype=np.float64)
-
-        return observation
+        info={}
+        return observation, info
       
     def world_genertor(self):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
