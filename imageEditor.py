@@ -37,8 +37,9 @@ def select_point(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         points.append((x, y))
         mask = create_mask(image, points)
+        global result
         result = apply_mask(image, mask)
-        cv2.imshow('Result', result)
+        # cv2.imshow('Result', result)
 
 # create a window for displaying the image to the user
 cv2.namedWindow('Select Region')
@@ -46,7 +47,7 @@ cv2.imshow('Select Region', image)
 cv2.setMouseCallback('Select Region', select_point)
 
 #wait until the enter key is pressed to darken pixels outside of region
-while true:
+while True:
     key = cv2.waitKey(1)
     if key == 13:
         break
