@@ -75,7 +75,7 @@ class Configs:
         # Drone's location starting location
         self.init_location = [self.PADDING_X,
                               self.PADDING_Y,
-                              60.0]
+                              300.0]
 
         self.FULL_BATTERY = 100.0
 
@@ -84,7 +84,7 @@ class Configs:
 
         # Percent overlap
         # Should be in range (0,1) exclusive
-        self.OVERLAP = 0.75
+        self.OVERLAP = 0.90
 
         # Drone's drag
         self.drag_table = pd.read_csv('drag_dataset.csv', index_col=0)

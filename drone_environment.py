@@ -24,6 +24,7 @@ import sys
 import time
 from configurations import Configs
 import pickle
+from PIL import Image
 
 class droneEnv(gym.Env):
     """
@@ -44,13 +45,16 @@ class droneEnv(gym.Env):
 
         self.location=self.cfg.init_location
 
-        # Generates a new world
-        self.world_genertor()
+        # # Generates a new world
+        # self.world_genertor()
+
+        # # Save as numpy array and png
         # np.save('test_world_1', self.world)
+        # cv2.imwrite("test_world_1.png", self.world * 255)
+        
 
         # Load a saved world
-        # self.world=np.load('test_world_1.npy')
-
+        self.world = np.load("output_image.npy")
         
         self.wind = self.cfg.DEFAULT_WIND       
         self.battery = self.cfg.FULL_BATTERY
@@ -105,17 +109,17 @@ class droneEnv(gym.Env):
 
             # take snap of the sim based on location [x,y,z]
             # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            self.boundaries = [int(-self.visible_y /2 + self.location[1]),
-                               int( self.visible_y /2 + self.location[1]),
-                               int(-self.visible_x /2 + self.location[0]),
-                               int( self.visible_x /2 + self.location[0])]
+            self.boundaries = [int(-self.visible_y / 2 + self.location[1]),
+                               int( self.visible_y / 2 + self.location[1]),
+                               int(-self.visible_x / 2 + self.location[0]),
+                               int( self.visible_x / 2 + self.location[0])]
 
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
             
             # Resizes that crop to the resolution of the drone (upscale)
             resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
-            added_battery = self.concat_battery(resized)
+            # added_battery = self.concat_battery(resized)
             # self.frame = added_battery
             self.frame = resized
 
@@ -154,7 +158,7 @@ class droneEnv(gym.Env):
         
         return score
         
-    def step(self, action, DISPLAY=True):
+    def step(self, action, DISPLAY=False):
         '''
         Moves drone and calculates reward based on seen anomalies and cost of move. Can print info to terminal if DISPLAY=True.
         
@@ -256,8 +260,8 @@ class droneEnv(gym.Env):
         # self.location = [100.,100.,60.]
 
         # TODO: remove this (need to figure out why it's here in the first place)
-        self.world_genertor()
-        # self.world = np.load('test_world_1.npy')
+        # self.world_genertor()
+        self.world = np.load("output_image.npy")
 
         self.battery = self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward = 0
@@ -407,8 +411,14 @@ class droneEnv(gym.Env):
         """
         try:
             cv2.imshow('just fetched', self.frame)
+
+            # change to grayscale
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
+
+            # ???
             img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
+
+            # add info text
             img = cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img = cv2.putText(img, 'step ' + str(self.step_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
             img = cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
