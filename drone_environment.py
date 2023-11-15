@@ -46,11 +46,11 @@ class droneEnv(gym.Env):
         self.location=self.cfg.init_location
 
         # # Generates a new world
-        # self.world_genertor()
+        self.world_genertor()
 
-        # # Save as numpy array and png
-        # np.save('test_world_1', self.world)
-        # cv2.imwrite("test_world_1.png", self.world * 255)
+        # Save as numpy array and png
+        np.save('test_world', self.world)
+        cv2.imwrite("test_world.png", self.world * 255)
         
 
         # Load a saved world
@@ -259,7 +259,6 @@ class droneEnv(gym.Env):
         self.location = self.cfg.init_location
         # self.location = [100.,100.,60.]
 
-        # TODO: remove this (need to figure out why it's here in the first place)
         # self.world_genertor()
         self.world = np.load("output_image.npy")
 
@@ -294,19 +293,22 @@ class droneEnv(gym.Env):
 
         square_corners = []
         for s in range(seeds):
-             # Corner of each square corner=[x,y]
-             corner=[random.randint(-self.cfg.PADDING_X, self.cfg.WORLD_XS[1]) + self.cfg.PADDING_X,
-                     random.randint(-self.cfg.PADDING_Y, self.cfg.WORLD_YS[1]) + self.cfg.PADDING_Y]
+            # Corner of each square corner=[x,y] (PLACES REWARDS IN PADDING)
+            # corner=[random.randint(-self.cfg.PADDING_X, self.cfg.WORLD_XS[1]) + self.cfg.PADDING_X,
+            #         random.randint(-self.cfg.PADDING_Y, self.cfg.WORLD_YS[1]) + self.cfg.PADDING_Y]
              
+            corner = [random.randint(0, self.cfg.WORLD_XS[1] - self.cfg.PADDING_X) + self.cfg.PADDING_X,
+                      random.randint(0, self.cfg.WORLD_YS[1] - self.cfg.PADDING_Y) + self.cfg.PADDING_Y]
+
              # List of all square corners
-             square_corners.append(corner)
-             square_size = random.randint(self.cfg.square_size_range[0], self.cfg.square_size_range[1])
-             for i in range(square_size):
-                 for j in range(square_size):
-                     try:
-                         self.world[corner[1] + j][corner[0] + i] = 1
-                     except:
-                         pass
+            square_corners.append(corner)
+            square_size = random.randint(self.cfg.square_size_range[0], self.cfg.square_size_range[1])
+            for i in range(square_size):
+                for j in range(square_size):
+                    try:
+                        self.world[corner[1] + j][corner[0] + i] = 1
+                    except:
+                        pass
 
     def loc_from_state(self):
         """

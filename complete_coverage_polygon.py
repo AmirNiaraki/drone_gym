@@ -18,25 +18,20 @@ rewards = []
 
 # get range of coverage from list of polygon points
 img_points = np.load("output_image_points.npy")
-area_bounds =  {"minx" : np.min(img_points[:,1]), 
-				"maxx" : np.max(img_points[:,1]),
-				"miny" : np.min(img_points[:,0]),
-				"maxy" : np.max(img_points[:,0])}
-
-print("Area to be searched:\n" + 
-	  "x-range: " + str(area_bounds["minx"]) + "-" + str(area_bounds["maxx"]) + "\n" +
-	  "y-range: " + str(area_bounds["miny"]) + "-" + str(area_bounds["maxy"]) + "\n")
-
-
-som_obs=env.reset()
+area_bounds =  {"miny" : np.min(img_points[:,1]), 
+				"maxy" : np.max(img_points[:,1]),
+				"minx" : np.min(img_points[:,0]),
+				"maxx" : np.max(img_points[:,0])}
 
 # initialize drone's starting position
 env.world = np.load("output_image.npy")
 env.location[0] = max(area_bounds["minx"], env.cfg.PADDING_X)
 env.location[1] = max(area_bounds["miny"], env.cfg.PADDING_Y)
-env.location[2] = 60
+env.location[2] = 100
 
-# print("res:" + str(env.world.shape))
+print("\nImage shape: " + str(env.world.shape) + "\n" +
+	  "x-range: " + str(area_bounds["minx"]) + "-" + str(area_bounds["maxx"]) + "\n" +
+	  "y-range: " + str(area_bounds["miny"]) + "-" + str(area_bounds["maxy"]) + "\n\n")
 
 # while the environment isn't finished
 while not env.done:
