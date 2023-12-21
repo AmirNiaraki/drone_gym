@@ -86,18 +86,18 @@ class droneEnv(gym.Env):
 
 		# for i in range (1,FPS+1):
 
-			if action[0]<0:
-				self.location[0]=max(self.location[0]+action[0], WORLD_XS[0])
-			else:
-				self.location[0]=min(self.location[0]+action[0], WORLD_XS[1])
-			if action[1]<0:
-				self.location[1]=max(self.location[1]+action[1], WORLD_YS[0])
-			else:
-				self.location[1]=min(self.location[1]+action[1], WORLD_YS[1])
-			if action[2]<0:
-				self.location[2]=max(self.location[2]+action[2], WORLD_ZS[0])
-			else:
-				self.location[2]=min(self.location[2]+action[2], WORLD_ZS[1])
+		if action[0]<0:
+			self.location[0]=max(self.location[0]+action[0], WORLD_XS[0])
+		else:
+			self.location[0]=min(self.location[0]+action[0], WORLD_XS[1])
+		if action[1]<0:
+			self.location[1]=max(self.location[1]+action[1], WORLD_YS[0])
+		else:
+			self.location[1]=min(self.location[1]+action[1], WORLD_YS[1])
+		if action[2]<0:
+			self.location[2]=max(self.location[2]+action[2], WORLD_ZS[0])
+		else:
+			self.location[2]=min(self.location[2]+action[2], WORLD_ZS[1])
 
 		self.reward=-self.move_cost()
 
