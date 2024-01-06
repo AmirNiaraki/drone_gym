@@ -10,28 +10,37 @@ import os
 from drone_environment import droneEnv
 import time
 
+
+
+# TODO: Should be big function	
+# Parameters: model/algo, timesteps, iterations
+# Give the logs a more descriptive name, its kinda confusing as is
+
+
+# saved models and training log paths
 models_dir = f"Training/Models/{int(time.time())}/"
 logdir = f"Training/Logs/{int(time.time())}/"
 
+# make directories
 if not os.path.exists(models_dir):
 	os.makedirs(models_dir)
 
 if not os.path.exists(logdir):
 	os.makedirs(logdir)
 
+# make environment
 # env = droneEnv('cont', render = True)
 env = droneEnv('disc', render = False)
 # env.reset()
 
+# make algorithm
 # model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 model = A2C('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
-# number of timesteps before writing
-TIMESTEPS = 1000000
-iters = 0
+timesteps = 1000000
+iterations = 10
 
-while iters<10:
-	iters += 1
+for iters in range(0, iterations):
 	print('iteration: ', iters)
-	model.learn(total_timesteps = TIMESTEPS, reset_num_timesteps = False, tb_log_name = f"A2C")
-	model.save(f"{models_dir}/{TIMESTEPS*iters}")
+	model.learn(total_timesteps = timesteps, reset_num_timesteps = False, tb_log_name = f"A2C")
+	model.save(f" {models_dir} / {timesteps * iters}")

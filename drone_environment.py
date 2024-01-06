@@ -37,9 +37,8 @@ class droneEnv(gym.Env):
 
         Parameters: name ("cont" or "disc"), renderer (default False)
         """
-        # super(droneEnv, self).__init__()
         super().__init__()
-        self.cfg = Configs()    
+        self.cfg = Configs()
         self.name = name
         self.render = render
 
@@ -51,7 +50,6 @@ class droneEnv(gym.Env):
         # Save as numpy array and png
         np.save('test_world', self.world)
         cv2.imwrite("test_world.png", self.world * 255)
-        
 
         # Load a saved world
         self.world = np.load("output_image.npy")
@@ -66,6 +64,10 @@ class droneEnv(gym.Env):
         self.drag_normalizer_coef = 0.5
         self.action = [0, 0, 0]
 
+        # potential obs space          Image                                 Wind Vector                          Battery
+        self.observation_space = tuple(Box(low=0, high=1, shape=(500, 500)), Box(low=-100, high=100, shape=(1,1)), Box(low=0, high=100, shape=(1,)))
+
+
         # define observation_space (cont/disc)
         if self.name == 'cont':
             # self.observation_space = Box(low=0, high=255,
@@ -76,8 +78,9 @@ class droneEnv(gym.Env):
         elif self.name == 'disc':
             # action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
             # action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
             self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
+            # TODO: update action space for discrete version of model
+            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
                    
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
@@ -234,7 +237,7 @@ class droneEnv(gym.Env):
         
         return observation, self.reward, self.done, info
          
-    def reset(self):
+    def reset(self, seed=None, generate_world=True):
         """
         End and close current simulation. Start a new simulation with reinitialized vars.
 
@@ -244,11 +247,11 @@ class droneEnv(gym.Env):
 
         Returns: An 'observation' (np.array of location, wind, and battery)
         """
-        print('number of active threads:', threading.active_count())        
+        # print('number of active threads:', threading.active_count())
+        # Close existing simulation     
         self.close()
 
-        # TODO: Can't we just call constructor on self, and replace all of this?
-        # Start new simulation
+        # Simulation not done
         self.done = False
 
         # Start new thread in update_frame
@@ -256,17 +259,17 @@ class droneEnv(gym.Env):
         self.thread = Thread(target=self.update_frame, args=(),daemon=True)
         self.thread.start()
 
+        # Reset environment/agent parameters
+        if (generate_world):
+            self.world_genertor()
+        else:
+            self.world = np.load("output_image.npy")
+
         self.location = self.cfg.init_location
-        # self.location = [100.,100.,60.]
-
-        # self.world_genertor()
-        self.world = np.load("output_image.npy")
-
         self.battery = self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward = 0
         self.total_reward = 0
         self.step_count = 0
-
         self.prev_reward = 0
         self.score = 0 
 

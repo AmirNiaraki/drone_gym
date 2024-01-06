@@ -68,8 +68,6 @@ class Configs:
         self.WORLD_XS = (self.PADDING_X, 900)         #World Boundaries (X Axis)
         self.WORLD_YS = (self.PADDING_Y, 400)         #World Boundaries (Y Axis)
 
-
-
         ### DRONE ###
 
         # Drone's location starting location

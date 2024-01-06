@@ -1,4 +1,6 @@
-**.png
-**.jpg
-Training/Models/
+*.png
+*.jpg
+*.json
+*.npy
+Training
 __pycache__/
