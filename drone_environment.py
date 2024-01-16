@@ -52,7 +52,7 @@ class droneEnv(gym.Env):
         cv2.imwrite("test_world.png", self.world * 255)
 
         # Load a saved world
-        self.world = np.load("output_image.npy")
+        # self.world = np.load("output_image.npy")
         
         self.wind = self.cfg.DEFAULT_WIND       
         self.battery = self.cfg.FULL_BATTERY
@@ -64,9 +64,11 @@ class droneEnv(gym.Env):
         self.drag_normalizer_coef = 0.5
         self.action = [0, 0, 0]
 
-        # potential obs space          Image                                 Wind Vector                          Battery
-        self.observation_space = tuple(Box(low=0, high=1, shape=(500, 500)), Box(low=-100, high=100, shape=(1,1)), Box(low=0, high=100, shape=(1,)))
-
+        # potential obs space
+        # self.observation_space = dict({"image":      Box(low=0, high=1, shape=(1, 500, 500)), # Image         (needs to update shape to image res)
+        #                                "wind_vector":Box(low=-100, high=100, shape=(2, 1)),   # Wind Vector   (needs to update range)
+        #                                "location":   Box(low=0, high = 2000, shape=(3, 1)),   # Location      (needs to update range)
+        #                                "battery":    Box(low=0, high=100, shape=(1,))})       # Batttery
 
         # define observation_space (cont/disc)
         if self.name == 'cont':
@@ -235,9 +237,11 @@ class droneEnv(gym.Env):
         if self.cfg.MAX_STEPS < self.step_count:
             self.done=True
         
-        return observation, self.reward, self.done, info
+        truncated = None
+
+        return observation, self.reward, self.done, truncated, info
          
-    def reset(self, seed=None, generate_world=True):
+    def reset(self, seed=None, options=None, generate_world=True):
         """
         End and close current simulation. Start a new simulation with reinitialized vars.
 
@@ -276,7 +280,9 @@ class droneEnv(gym.Env):
         observation = [self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
         observation = np.array(observation) 
         
-        return observation
+        info = None
+
+        return observation, info
       
     def world_genertor(self):
         """

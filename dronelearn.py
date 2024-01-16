@@ -31,7 +31,7 @@ if not os.path.exists(logdir):
 # make environment
 # env = droneEnv('cont', render = True)
 env = droneEnv('disc', render = False)
-# env.reset()
+env.reset()
 
 # make algorithm
 # model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
