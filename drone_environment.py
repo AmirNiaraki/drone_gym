@@ -64,25 +64,27 @@ class droneEnv(gym.Env):
         self.drag_normalizer_coef = 0.5
         self.action = [0, 0, 0]
 
-        # potential obs space
-        # self.observation_space = dict({"image":      Box(low=0, high=1, shape=(1, 500, 500)), # Image         (needs to update shape to image res)
-        #                                "wind_vector":Box(low=-100, high=100, shape=(2, 1)),   # Wind Vector   (needs to update range)
-        #                                "location":   Box(low=0, high = 2000, shape=(3, 1)),   # Location      (needs to update range)
-        #                                "battery":    Box(low=0, high=100, shape=(1,))})       # Batttery
+        # potential observation & action spaces
+        dct = {"image":       Box(low=0, high=1, shape=(1, 500, 500)),   # Image         (needs to update shape to image res)
+                "wind_vector":Box(low=-100, high=100, shape=(2,)),    # Wind Vector   (needs to update range)
+                "location":   Box(low=0, high = 2000, shape=(3,)),    # Location      (needs to update range)
+                "battery":    Box(low=0, high=100, shape=(1,))}       # Batttery
+        self.observation_space = gym.spaces.Dict(dct)
+        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
 
         # define observation_space (cont/disc)
-        if self.name == 'cont':
-            # self.observation_space = Box(low=0, high=255,
-            # shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-            self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
-            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+        # if self.name == 'cont':
+        #     # self.observation_space = Box(low=0, high=255,
+        #     # shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+        #     self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
+        #     self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
 
-        elif self.name == 'disc':
-            # action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
-            # action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-            self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
-            # TODO: update action space for discrete version of model
-            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+        # elif self.name == 'disc':
+        #     # action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
+        #     # action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
+        #     self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
+        #     # TODO: update action space for discrete version of model
+        #     self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
                    
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
@@ -227,10 +229,18 @@ class droneEnv(gym.Env):
         self.reward.astype(np.float32)
         info = {}
         
-        # define observation        
-        # observation=self.frame        
-        observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation) 
+        # define observation
+        # observation=self.frame
+        
+        # NEW
+        observation = {"image":      self.frame,
+                       "wind_vector":self.wind,
+                       "location":   tuple(self.location),
+                       "battery":    self.battery}
+
+        # OLD
+        # observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+        # observation = np.array(observation)
 
         if DISPLAY == True:
             self.display_info()

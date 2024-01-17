@@ -35,7 +35,11 @@ env.reset()
 
 # make algorithm
 # model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
-model = A2C('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
+# 'CnnPolicy'
+model = PPO('MultiInputPolicy', env, verbose = 1, tensorboard_log = logdir)
+
+print(model.policy)
+exit()
 
 timesteps = 1000000
 iterations = 10
