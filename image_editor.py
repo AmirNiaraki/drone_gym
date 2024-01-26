@@ -41,21 +41,28 @@ def select_point(event, x, y, flag, param):
         result = apply_mask(image, mask)
         # cv2.imshow('Result', result)
 
-# create a window for displaying the image to the user
-cv2.namedWindow('Select Region')
-cv2.imshow('Select Region', image)
-cv2.setMouseCallback('Select Region', select_point)
+isTerminated = False
+count = 0
+while not isTerminated:
+    points.clear()
+    # create a window for displaying the image to the user
+    cv2.namedWindow('Select Region')
+    cv2.imshow('Select Region', image)
+    cv2.setMouseCallback('Select Region', select_point)
 
 #wait until the enter key is pressed to darken pixels outside of region
-while True:
-    key = cv2.waitKey(1)
-    if key == 13:
-        break
-
-#clean up the window, write the image to file
-cv2.destroyAllWindows()
-cv2.imwrite('output_image.png', result)
-# div by 255 to normalize (black = 1, white = 0)
-# this is necessary for the environment to properly upload
-np.save("output_image", result / 255)
-np.save("output_image_points", points)
+    while True:
+        key = cv2.waitKey(1)
+        if key == 13:
+            #clean up the window, write the image to file
+            cv2.destroyAllWindows()
+            cv2.imwrite('output_image' + str(count) + '.png', result)
+            # div by 255 to normalize (black = 1, white = 0)
+            # this is necessary for the environment to properly upload
+            np.save("output_image" + str(count), result / 255)
+            np.save("output_image_points" + str(count), points)
+            break
+        elif key == 32:
+            isTerminated = True
+            break
+    count += 1
