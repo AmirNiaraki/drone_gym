@@ -10,7 +10,7 @@ import time
 from stable_baselines3 import PPO, A2C
 import os
 import time
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
 
 env=droneEnv('disc', render=True)
 
