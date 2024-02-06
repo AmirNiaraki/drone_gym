@@ -39,21 +39,24 @@ class droneEnv(gym.Env):
         """
         super().__init__()
         self.cfg = Configs()
+        self.world_name = "output_image.npy"
         self.name = name
         self.render = render
         self.generate_world = generate_world
 
         self.location=self.cfg.init_location
 
-        # # Generates a new world
-        self.world_genertor()
+        if generate_world:
+            # # Generates a new world
+            self.world_genertor()
 
-        # Save as numpy array and png
-        np.save('test_world', self.world)
-        cv2.imwrite("test_world.png", self.world * 255)
-
-        # Load a saved world
-        # self.world = np.load("output_image.npy")
+            # Save as numpy array and png
+            np.save('test_world', self.world)
+            cv2.imwrite("test_world.png", self.world * 255)
+        else:
+            # Load a saved world
+            self.world = np.load(self.world_name)
+            print(self.world)
         
         self.wind = self.cfg.DEFAULT_WIND       
         self.battery = self.cfg.FULL_BATTERY
@@ -259,7 +262,7 @@ class droneEnv(gym.Env):
         if (self.generate_world):
             self.world_genertor()
         else:
-            self.world = np.load("output_image.npy")
+            self.world = np.load(self.world_name)
 
         self.location = self.cfg.init_location # [x,y,z,] m
         self.battery = self.cfg.FULL_BATTERY
@@ -417,19 +420,15 @@ class droneEnv(gym.Env):
 
             # change to grayscale
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
-
             # ???
             img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
-
             # add info text
             img = cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img = cv2.putText(img, 'step ' + str(self.step_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
             img = cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
             img = cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle, 2)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
             img = cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-
             cv2.imshow('World view', img)
-
             
         except:
             print('frame not available for render!')

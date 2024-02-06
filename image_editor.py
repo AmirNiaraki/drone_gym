@@ -78,10 +78,16 @@ while True:
 final_mask = create_mask(gray_image, all_points)
 result = apply_mask(image, final_mask)
 
+# if the image comes out as RGB, convert to Grayscale
+try:
+    result = np.amax(np.array(result, dtype=int), axis=2)
+except:
+    pass
+
 # Clean up the window, write the image to file
 cv2.destroyAllWindows()
 cv2.imwrite('output_image.png', result)
 # Div by 255 to normalize (black = 1, white = 0)
 # This is necessary for the environment to properly upload
-np.save("output_image", result / 255)
+np.save("output_image", result // 255)
 np.save("output_image_points", all_points)
