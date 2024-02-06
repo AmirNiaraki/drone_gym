@@ -5,3 +5,4 @@
 Training
 __pycache__/
 .vscode
+/venv
