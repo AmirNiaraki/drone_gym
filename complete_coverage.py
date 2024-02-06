@@ -50,20 +50,20 @@ for i in range(num_iterations):
 	while True and not env.done:
 		if LTR == 1:
 			while abs(env.location[0] - env.cfg.WORLD_XS[1]) > 1:
-				obs, reward, done, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
+				obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 				steps += 1
 				rewards.append(reward)
 
 		if LTR == -1:
 			while abs(env.location[0] - env.cfg.WORLD_XS[0]) > 1:
-				obs, reward, done, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
+				obs, reward, done, trunc, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
 				steps += 1
 				rewards.append(reward)
 
 		LTR = -LTR
 
 		if abs(env.location[1] - env.cfg.WORLD_YS[1]) > 1:
-			obs, reward, done, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
+			obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
 		else:
 			break
 

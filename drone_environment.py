@@ -31,7 +31,7 @@ class droneEnv(gym.Env):
     Drone Environment class, extends gym.Env 
         ... many instance variables
     """
-    def __init__(self, name, render=False):
+    def __init__(self, name, render=False, generate_world=True):
         """
         Constructor.
 
@@ -41,6 +41,7 @@ class droneEnv(gym.Env):
         self.cfg = Configs()
         self.name = name
         self.render = render
+        self.generate_world = generate_world
 
         self.location=self.cfg.init_location
 
@@ -64,27 +65,18 @@ class droneEnv(gym.Env):
         self.drag_normalizer_coef = 0.5
         self.action = [0, 0, 0]
 
-        # potential observation & action spaces
-        dct = {"image":       Box(low=0, high=1, shape=(1, 500, 500)),   # Image         (needs to update shape to image res)
-                "wind_vector":Box(low=-100, high=100, shape=(2,)),    # Wind Vector   (needs to update range)
-                "location":   Box(low=0, high = 2000, shape=(3,)),    # Location      (needs to update range)
-                "battery":    Box(low=0, high=100, shape=(1,))}       # Batttery
-        self.observation_space = gym.spaces.Dict(dct)
-        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-
         # define observation_space (cont/disc)
-        # if self.name == 'cont':
-        #     # self.observation_space = Box(low=0, high=255,
-        #     # shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-        #     self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
-        #     self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-
-        # elif self.name == 'disc':
-        #     # action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
-        #     # action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-        #     self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
-        #     # TODO: update action space for discrete version of model
-        #     self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+        if self.name == 'cont':
+            # self.observation_space = Box(low=0, high=255,
+            # shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
+            self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
+            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+        elif self.name == 'disc':
+            # action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
+            # action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
+            self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
+            # TODO: update action space for discrete version of model
+            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
                    
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
@@ -209,7 +201,7 @@ class droneEnv(gym.Env):
         if self.battery<1:
              self.reward-=10
              self.done=True
-             #self.close()
+             self.close()
          
         # Renderer?
         if self.render == True and self.done == False:
@@ -229,18 +221,8 @@ class droneEnv(gym.Env):
         self.reward.astype(np.float32)
         info = {}
         
-        # define observation
-        # observation=self.frame
-        
-        # NEW
-        observation = {"image":      self.frame,
-                       "wind_vector":self.wind,
-                       "location":   tuple(self.location),
-                       "battery":    self.battery}
-
-        # OLD
-        # observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-        # observation = np.array(observation)
+        observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+        observation = np.array(observation)
 
         if DISPLAY == True:
             self.display_info()
@@ -250,8 +232,8 @@ class droneEnv(gym.Env):
         truncated = None
 
         return observation, self.reward, self.done, truncated, info
-         
-    def reset(self, seed=None, options=None, generate_world=True):
+            
+    def reset(self, seed=None, options=None):
         """
         End and close current simulation. Start a new simulation with reinitialized vars.
 
@@ -262,7 +244,7 @@ class droneEnv(gym.Env):
         Returns: An 'observation' (np.array of location, wind, and battery)
         """
         # print('number of active threads:', threading.active_count())
-        # Close existing simulation     
+        # Close existing simulation
         self.close()
 
         # Simulation not done
@@ -274,22 +256,22 @@ class droneEnv(gym.Env):
         self.thread.start()
 
         # Reset environment/agent parameters
-        if (generate_world):
+        if (self.generate_world):
             self.world_genertor()
         else:
             self.world = np.load("output_image.npy")
 
-        self.location = self.cfg.init_location
-        self.battery = self.cfg.FULL_BATTERY # [x,y,z,] m
+        self.location = self.cfg.init_location # [x,y,z,] m
+        self.battery = self.cfg.FULL_BATTERY
         self.reward = 0
         self.total_reward = 0
         self.step_count = 0
         self.prev_reward = 0
-        self.score = 0 
+        self.score = 0
 
-        observation = [self.location[0],self.location[1],self.location[2], self.battery, self.wind[0], self.wind[1]]
-        observation = np.array(observation) 
-        
+        observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+        observation = np.array(observation)
+
         info = None
 
         return observation, info

@@ -38,14 +38,14 @@ while not env.done:
 	# go right
 	while LTR == 1 and env.location[0] < area_bounds["maxx"] and env.location[0] < env.cfg.WORLD_XS[1]:
 		# take step
-		obs, reward, done, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
+		obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 		steps += 1
 		rewards.append(reward)
 
 	# go left
 	while LTR == -1 and env.location[0] > area_bounds["minx"] and env.location[0] > env.cfg.WORLD_XS[0]:
 		# take step left
-		obs, reward, done, info = env.step([-env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
+		obs, reward, done, trunc, info = env.step([-env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 		steps += 1
 		rewards.append(reward)
 
@@ -53,7 +53,7 @@ while not env.done:
 
 	# drone should be at left/right edge of bounded area
 	if (env.location[1] < area_bounds["maxy"]):
-		obs, reward, done, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
+		obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
 	# if the drone can't move down it must be finished
 	else:
 		break

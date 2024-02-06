@@ -41,8 +41,8 @@ class Configs:
 
         ### DRONE CAMERA ###
         # Resolution of drone camera
-        self.FRAME_W = 300
-        self.FRAME_H = 200
+        self.FRAME_W = 150
+        self.FRAME_H = 100
 
         # Drone camera's FOV
         self.FOV_X = 60 / 2                 #degrees for halve of the field of view horizontaly
@@ -56,7 +56,7 @@ class Configs:
         ### WORLD, REWARDS, and SIMULATION ###
         
         # Range of possible height values the drone can take
-        self.WORLD_ZS = (100, 300)                 #World Boundaries (Z Axis)
+        self.WORLD_ZS = (50, 100)                 #World Boundaries (Z Axis)
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame
         # Needed so that the drone's view isn't outide of the world
@@ -65,15 +65,15 @@ class Configs:
         self.PADDING_Y = int(tan(radians(self.FOV_Y)) * self.WORLD_ZS[1])
 
         # World dimensions
-        self.WORLD_XS = (self.PADDING_X, 900)         #World Boundaries (X Axis)
-        self.WORLD_YS = (self.PADDING_Y, 400)         #World Boundaries (Y Axis)
+        self.WORLD_XS = (self.PADDING_X, 500)         #World Boundaries (X Axis)
+        self.WORLD_YS = (self.PADDING_Y, 250)         #World Boundaries (Y Axis)
 
         ### DRONE ###
 
         # Drone's location starting location
         self.init_location = [self.PADDING_X,
                               self.PADDING_Y,
-                              300.0]
+                              self.WORLD_ZS[1]]
 
         self.FULL_BATTERY = 100.0
 

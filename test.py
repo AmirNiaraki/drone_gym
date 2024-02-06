@@ -10,24 +10,26 @@ import time
 from stable_baselines3 import PPO, A2C
 import os
 import time
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
 
 env=droneEnv('disc', render=True)
 
 # Load the trained agent
-model_path = "Training/Models/1677789857/10000000"
-model = PPO('MlpPolicy', env)
-model.load(model_path)
+model_path = "test_model_1"
+model = PPO.load(model_path, env=env)
 
-episodes=10 
+episodes=10
 
 for ep in range(episodes):
-	obs=env.reset()
-	done=False
-	ep_reward=[]
-	while not done:
-		action, _= model.predict(obs)
-		obs, reward, done, info = env.step(action)
-		ep_reward.append(reward)
+	obs, _ = env.reset()
+	# print("OBS")
+	# print(obs)
 
-	print(sum(ep_reward))
+	done=False
+	running_reward=[]
+	while not done:
+		action, info= model.predict(obs)
+		obs, reward, done, trunc, info = env.step(action)
+		running_reward.append(reward)
+
+	print(sum(running_reward))
