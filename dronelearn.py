@@ -52,7 +52,7 @@ print("\n\nACT SPACE")
 print(env.action_space)
 # exit()
 
-timesteps = 1000
+timesteps = 1000000
 iterations = 1
 
 for iters in range(0, iterations):

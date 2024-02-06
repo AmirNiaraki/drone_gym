@@ -12,10 +12,10 @@ import os
 import time
 from drone_environment import droneEnv
 
-env=droneEnv('disc', render=True)
+env=droneEnv('disc', render=True, generate_world=False)
 
 # Load the trained agent
-model_path = "test_model_1"
+model_path = "linetest_model"
 model = PPO.load(model_path, env=env)
 
 episodes=10

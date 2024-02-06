@@ -56,7 +56,6 @@ class droneEnv(gym.Env):
         else:
             # Load a saved world
             self.world = np.load(self.world_name)
-            print(self.world)
         
         self.wind = self.cfg.DEFAULT_WIND       
         self.battery = self.cfg.FULL_BATTERY
