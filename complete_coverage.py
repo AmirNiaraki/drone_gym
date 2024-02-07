@@ -31,7 +31,7 @@ from sys import exit
 from configurations import Configs
 from math import tan, radians, degrees, acos, sqrt
 
-env = droneEnv('cont', render=True, generate_world=False)
+env = droneEnv(render=True, generate_world=False)
 
 # Number of strides necessary to cover rectangle (?)
 strides_x = int((env.cfg.WORLD_XS[1] - env.cfg.WORLD_XS[0]) / env.visible_x)
@@ -49,20 +49,20 @@ for i in range(num_iterations):
 
 	while True and not env.done:
 		if LTR == 1:
-			while abs(env.location[0] - env.cfg.WORLD_XS[1]) > 1:
+			while abs(env.location[0] - env.cfg.WORLD_XS[1]) > 1 and not env.done:
 				obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 				steps += 1
 				rewards.append(reward)
 
 		if LTR == -1:
-			while abs(env.location[0] - env.cfg.WORLD_XS[0]) > 1:
+			while abs(env.location[0] - env.cfg.WORLD_XS[0]) > 1 and not env.done:
 				obs, reward, done, trunc, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
 				steps += 1
 				rewards.append(reward)
 
 		LTR = -LTR
 
-		if abs(env.location[1] - env.cfg.WORLD_YS[1]) > 1:
+		if abs(env.location[1] - env.cfg.WORLD_YS[1]) > 1 and not env.done:
 			obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
 		else:
 			break

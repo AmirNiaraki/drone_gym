@@ -28,23 +28,22 @@ class droneEnv(Env):
     Drone Environment class, extends gym.Env 
         ... many instance variables
     """
-    def __init__(self, name, render=False, generate_world=True):
+    def __init__(self, render=False, generate_world=True):
         """
         Constructor.
 
-        Parameters: name ("cont" or "disc"), renderer (default False)
         """
         super().__init__()
         
         # cml args
-        self.name = name
         self.render = render
         self.generate_world = generate_world
 
         # hardcoded
         self.world_name = "output_image.npy"
         self.cfg = Configs()
-        self.wind = self.cfg.DEFAULT_WIND     
+        self.wind = self.cfg.DEFAULT_WIND
+        self.location = [0, 0, 0]
 
         # observation space: [location, wind, battery]
         self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
@@ -57,17 +56,14 @@ class droneEnv(Env):
         
     def update_frame (self):
         """
-        Only called in a multithreading (???)
         Updates self.frame based on variables from configurations determining what the drone can see
-
-        TODO: Why do we need to added the battery level on the side
 
         Parameters: - 
 
         Returns: -
         """
         self.imager_thread_name = threading.current_thread()
-        print('top of the thread')
+        # print('top of the thread')
         while not self.done:
             # Recalculate drone's field of view
             self.visible_x = tan(radians(self.cfg.FOV_X)) * 2 * self.location[2]
@@ -208,7 +204,13 @@ class droneEnv(Env):
         self.drag_normalizer_coef = 0.5
         self.action = [0, 0, 0]
         self.battery = 100.0
-        self.location = self.cfg.init_location
+
+        # do not simplify
+        self.location[0] = self.cfg.init_location[0]
+        self.location[1] = self.cfg.init_location[1]
+        self.location[2] = self.cfg.init_location[2]
+
+        print(self.location)
 
         # generate world
         if self.generate_world:
@@ -355,11 +357,12 @@ class droneEnv(Env):
         # Method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
-        ########### UNCOMMENT TO APPLY COST TO BATTERY ###########
-        if self.battery_inloop:
-            print("cost=\t" + str(cost) + "\taction=\t" + str(self.action))
-            self.battery = max(0, self.battery - cost)
+        # apply cost to battery
+        self.battery = max(0, self.battery - cost)
         
+        # TESTING
+        # print("action:\t" + str(self.action) + "\twind:\t" + str(self.wind) + "\tcost\t" + str(cost))
+
         return cost
  
     def renderer(self):
