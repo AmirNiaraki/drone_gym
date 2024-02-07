@@ -6,6 +6,8 @@ Created on Thu Nov 10 00:38:41 2022
 """
 
 from stable_baselines3 import PPO, A2C
+# from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.env_checker import check_env
 import os
 from drone_environment import droneEnv
 import time
@@ -31,21 +33,13 @@ print("model directory: " + modeldir)
 
 
 # make environment
-env = droneEnv('disc', render = False)
-env.reset()
+env = droneEnv(render=False, generate_world=False)
+check_env(env)
 
 # make algorithm
 model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
-# model = A2C('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
-print("\n\nPOLICY")
-print(model.policy)
-print("\n\nOBS SPACE")
-print(env.observation_space)
-print("\n\nACT SPACE")
-print(env.action_space)
-# exit()
-
+# training hyperparameters
 timesteps = 500000
 iterations = 1
 

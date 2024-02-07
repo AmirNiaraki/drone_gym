@@ -5,8 +5,8 @@ Created on Sun Nov  6 15:35:20 2022
 @author: aniaraki
 
 """
-from gym import Env
-from gym.spaces import Box
+import gymnasium as gym
+from gymnasium.spaces import Box
 import numpy as np
 # import pandas as pd
 from math import tan, radians, degrees, acos, sqrt
@@ -23,7 +23,7 @@ import threading
 import time
 from configurations import Configs
 
-class droneEnv(Env):
+class droneEnv(gym.Env):
     """
     Drone Environment class, extends gym.Env 
         ... many instance variables
@@ -177,8 +177,8 @@ class droneEnv(Env):
         if self.cfg.MAX_STEPS < self.step_count:
             self.done=True
         
-        info = None
-        truncated = None
+        info = {}
+        truncated = False
 
         return observation, self.reward, self.done, truncated, info
             
@@ -210,8 +210,6 @@ class droneEnv(Env):
         self.location[1] = self.cfg.init_location[1]
         self.location[2] = self.cfg.init_location[2]
 
-        print(self.location)
-
         # generate world
         if self.generate_world:
             self.world_genertor() # sets self.world
@@ -232,7 +230,7 @@ class droneEnv(Env):
         observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
         observation = np.array(observation)
 
-        info = None
+        info = {}
 
         return observation, info
       

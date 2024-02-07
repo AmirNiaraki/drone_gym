@@ -31,7 +31,7 @@ from sys import exit
 from configurations import Configs
 from math import tan, radians, degrees, acos, sqrt
 
-env = droneEnv(render=True, generate_world=False)
+env = droneEnv(render=True)
 
 # Number of strides necessary to cover rectangle (?)
 strides_x = int((env.cfg.WORLD_XS[1] - env.cfg.WORLD_XS[0]) / env.visible_x)
