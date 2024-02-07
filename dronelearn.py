@@ -29,12 +29,6 @@ except:
 print("log directory: " + logdir)
 print("model directory: " + modeldir)
 
-# make directories
-# if not os.path.exists(modeldir):
-# 	os.makedirs(modeldir)
-
-# if not os.path.exists(logdir):
-# 	os.makedirs(logdir)
 
 # make environment
 env = droneEnv('disc', render = False)
@@ -52,7 +46,7 @@ print("\n\nACT SPACE")
 print(env.action_space)
 # exit()
 
-timesteps = 1000000
+timesteps = 500000
 iterations = 1
 
 for iters in range(0, iterations):

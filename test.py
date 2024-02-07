@@ -11,11 +11,17 @@ from stable_baselines3 import PPO, A2C
 import os
 import time
 from drone_environment import droneEnv
+import sys
 
 env=droneEnv('disc', render=True, generate_world=False)
 
 # Load the trained agent
-model_path = "linetest_model"
+try:
+	model_path = sys.argv[1]
+except:
+	print("enter model name (no .zip) as CML arg")
+	exit()
+
 model = PPO.load(model_path, env=env)
 
 episodes=10

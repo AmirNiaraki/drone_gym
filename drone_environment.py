@@ -5,28 +5,25 @@ Created on Sun Nov  6 15:35:20 2022
 @author: aniaraki
 
 """
-import gym
 from gym import Env
-from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete
+from gym.spaces import Box
 import numpy as np
-import pandas as pd
+# import pandas as pd
 from math import tan, radians, degrees, acos, sqrt
 import random
-import os
-from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3.common.evaluation import evaluate_policy
+# import os
+# from stable_baselines3 import PPO
+# from stable_baselines3.common.vec_env import VecFrameStack
+# from stable_baselines3.common.evaluation import evaluate_policy
 import cv2
 from threading import Thread
 import threading
-from sys import exit
-import sys
+# from sys import exit
+# import sys
 import time
 from configurations import Configs
-import pickle
-from PIL import Image
 
-class droneEnv(gym.Env):
+class droneEnv(Env):
     """
     Drone Environment class, extends gym.Env 
         ... many instance variables
@@ -38,54 +35,25 @@ class droneEnv(gym.Env):
         Parameters: name ("cont" or "disc"), renderer (default False)
         """
         super().__init__()
-        self.cfg = Configs()
-        self.world_name = "output_image.npy"
+        
+        # cml args
         self.name = name
         self.render = render
         self.generate_world = generate_world
 
-        self.location=self.cfg.init_location
+        # hardcoded
+        self.world_name = "output_image.npy"
+        self.cfg = Configs()
+        self.wind = self.cfg.DEFAULT_WIND     
 
-        if generate_world:
-            # # Generates a new world
-            self.world_genertor()
+        # observation space: [location, wind, battery]
+        self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
 
-            # Save as numpy array and png
-            np.save('test_world', self.world)
-            cv2.imwrite("test_world.png", self.world * 255)
-        else:
-            # Load a saved world
-            self.world = np.load(self.world_name)
-        
-        self.wind = self.cfg.DEFAULT_WIND       
-        self.battery = self.cfg.FULL_BATTERY
-        self.done = False
-        self.reward = 0
-        self.total_reward = 0
-        self.step_count = 0
-        self.battery_inloop = True
-        self.drag_normalizer_coef = 0.5
-        self.action = [0, 0, 0]
+        # action space: [x-velocity, y-velocity, z-velocity]
+        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
 
-        # define observation_space (cont/disc)
-        if self.name == 'cont':
-            # self.observation_space = Box(low=0, high=255,
-            # shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1), dtype=np.uint8)
-            self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
-            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-        elif self.name == 'disc':
-            # action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
-            # action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-            self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
-            # TODO: update action space for discrete version of model
-            self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-                   
-        # Define thread for getting the frame to the agent at all times
-        time.sleep(0.01)
-        self.thread=Thread(target=self.update_frame, args=(), daemon=True)
-        self.thread.start()
-        time.sleep(0.01)
-        print('environment is initialized')        
+        # initialize everything else with reset()
+        self.reset()
         
     def update_frame (self):
         """
@@ -135,25 +103,12 @@ class droneEnv(gym.Env):
         # drone view picture with no battery
         nobat = (self.frame)[0 : self.cfg.FRAME_H, 0 : self.cfg.FRAME_W]
         
-        # number of pixels - sum of black pixels
+        # sum of black pixels
         # nobat / 255 normalizes values black pixels = 1
         score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.sum(nobat / 255, dtype=np.int32)
         
         # Remove the detected objects from the world
         # Set everything equal to 0 because black and white is inverted in update_frame()
-
-        # Doesn't make sense to remove objects for real-world applications, can't just remove the object. Need to check if its been seen before
-        # PROPOSITION
-        # There is a real-world with unknown objects in it
-        # There is a drone 2d-array containing known objects it has seen
-        # Assumptions: the drone knows its location
-        # Psuedo code:
-        #   if(sees object)
-        #       if (known object based on its own location)
-        #           do nothing/continue
-        #       else
-        #           record where object is
-        #           calculate and apply reward
         self.world[int(-self.visible_y / 2 + self.location[1]) : int(self.visible_y / 2 + self.location[1]),
                    int(-self.visible_x / 2 + self.location[0]) : int(self.visible_x / 2 + self.location[0])] = 0
         
@@ -175,26 +130,23 @@ class droneEnv(gym.Env):
         '''
         self.action = action
         self.reward = 0
-        self.abs_velocity = self.action
         
         # Move the Drone
         # x-direction
-        if  self.abs_velocity[0] < 0:
-            self.location[0] = max(self.location[0] + self.abs_velocity[0], self.cfg.WORLD_XS[0])  
+        if  self.action[0] < 0:
+            self.location[0] = max(self.location[0] + self.action[0], self.cfg.WORLD_XS[0])  
         else:
-            self.location[0] = min(self.location[0] + self.abs_velocity[0], self.cfg.WORLD_XS[1])
-        
+            self.location[0] = min(self.location[0] + self.action[0], self.cfg.WORLD_XS[1])
         # y-direction
-        if  self.abs_velocity[1] < 0:
-            self.location[1] = max(self.location[1] + self.abs_velocity[1], self.cfg.WORLD_YS[0])  
+        if  self.action[1] < 0:
+            self.location[1] = max(self.location[1] + self.action[1], self.cfg.WORLD_YS[0])  
         else:
-            self.location[1] = min(self.location[1] + self.abs_velocity[1], self.cfg.WORLD_YS[1])
-        
+            self.location[1] = min(self.location[1] + self.action[1], self.cfg.WORLD_YS[1])
         # z-direction
-        if  self.abs_velocity[2] < 0:
-            self.location[2] = max(self.location[2] + self.abs_velocity[2], self.cfg.WORLD_ZS[0])  
+        if  self.action[2] < 0:
+            self.location[2] = max(self.location[2] + self.action[2], self.cfg.WORLD_ZS[0])  
         else:
-            self.location[2] = min(self.location[2] + self.abs_velocity[2], self.cfg.WORLD_ZS[1])
+            self.location[2] = min(self.location[2] + self.action[2], self.cfg.WORLD_ZS[1])
              
         # Subtract move_cost from reward
         self.reward -= self.move_cost()
@@ -205,32 +157,31 @@ class droneEnv(gym.Env):
              self.done=True
              self.close()
          
-        # Renderer?
-        if self.render == True and self.done == False:
+        # render new world
+        if self.render and not self.done:
             self.renderer()
-        time.sleep(0.001)  # Probably have to wait for renderer or something
+        time.sleep(0.001)
         
-        # Add any anomalies to reward with fetch_anomaly.
+        # Add any anomalies to reward with fetch_anomaly
         self.reward += self.fetch_anomaly()
         self.total_reward += self.reward
-
-        self.step_count += 1
-        # if self.fetch_anomaly()>0:
-        #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
-        #     print('Total rewards is:', self.total_reward)
-        
-        # ???
         self.reward.astype(np.float32)
-        info = {}
+
+        # increase step count
+        self.step_count += 1
         
-        observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+        # concatenate observation to be returned
+        observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
         observation = np.array(observation)
 
         if DISPLAY == True:
             self.display_info()
+
+        # check if simulation is done
         if self.cfg.MAX_STEPS < self.step_count:
             self.done=True
         
+        info = None
         truncated = None
 
         return observation, self.reward, self.done, truncated, info
@@ -245,33 +196,38 @@ class droneEnv(gym.Env):
 
         Returns: An 'observation' (np.array of location, wind, and battery)
         """
-        # print('number of active threads:', threading.active_count())
         # Close existing simulation
         self.close()
 
-        # Simulation not done
+        # reset parameters
         self.done = False
-
-        # Start new thread in update_frame
-        time.sleep(0.01)
-        self.thread = Thread(target=self.update_frame, args=(),daemon=True)
-        self.thread.start()
-
-        # Reset environment/agent parameters
-        if (self.generate_world):
-            self.world_genertor()
-        else:
-            self.world = np.load(self.world_name)
-
-        self.location = self.cfg.init_location # [x,y,z,] m
-        self.battery = self.cfg.FULL_BATTERY
         self.reward = 0
         self.total_reward = 0
         self.step_count = 0
-        self.prev_reward = 0
-        self.score = 0
+        self.battery_inloop = True
+        self.drag_normalizer_coef = 0.5
+        self.action = [0, 0, 0]
+        self.battery = 100.0
+        self.location = self.cfg.init_location
 
-        observation = [self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
+        # generate world
+        if self.generate_world:
+            self.world_genertor() # sets self.world
+
+            # Save as numpy array and png
+            # np.save('test_world', self.world)
+            # cv2.imwrite("test_world.png", self.world * 255)
+        else:
+            # Load a saved world
+            self.world = np.load(self.world_name)
+
+        # Define thread for getting the frame to the agent at all times
+        time.sleep(0.01)
+        self.thread=Thread(target=self.update_frame, args=(), daemon=True)
+        self.thread.start()
+        time.sleep(0.01)
+
+        observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
         observation = np.array(observation)
 
         info = None
@@ -345,7 +301,10 @@ class droneEnv(gym.Env):
 
         # Closes active thread
         time.sleep(0.1) 
-        self.imager_thread_name.join()
+        try:
+            self.imager_thread_name.join()
+        except:
+            pass
 
         # Close windows
         cv2.destroyAllWindows()
@@ -391,20 +350,17 @@ class droneEnv(gym.Env):
             print('relative velocity/angles out of bounds.')
             # defualt drag
             self.drag = 0.1 * self.drag_normalizer_coef
-        self.cost = self.drag * self.relative_velocity ** 2
+        cost = self.drag * self.relative_velocity ** 2
 
         # Method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
         
         ########### UNCOMMENT TO APPLY COST TO BATTERY ###########
-        # if self.battery_inloop==True:
-        #     self.battery = max(0, self.battery - self.cost)
-        #     print(self.battery)
-        #
-        # return self.cost
-
-        # Comment out to apply cost
-        return 0
+        if self.battery_inloop:
+            print("cost=\t" + str(cost) + "\taction=\t" + str(self.action))
+            self.battery = max(0, self.battery - cost)
+        
+        return cost
  
     def renderer(self):
         """
@@ -436,7 +392,7 @@ class droneEnv(gym.Env):
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
             self.done=True
-            self.close()       
+            self.close()
     
     def display_info(self):
         """

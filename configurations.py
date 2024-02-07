@@ -17,11 +17,6 @@ class Configs:
         self.STATES_Z = 1
         self.init_state = [1, 1, 1]
         
-        
-        # Lets define a 1000 m * 250 m = 60 acres world
-        # Lets assume the flight altitude can vary between 60 to 100 m
-        
-
         # Number of seeds (for reward generation)
         self.SEEDS = 1000
 
@@ -34,9 +29,7 @@ class Configs:
         self.DEFAULT_WIND = (3.5, 0.0)
 
         # How many steps per episode
-        self.MAX_STEPS = 10000
-        
-
+        self.MAX_STEPS = 1000
 
 
         ### DRONE CAMERA ###
@@ -54,7 +47,6 @@ class Configs:
 
 
         ### WORLD, REWARDS, and SIMULATION ###
-        
         # Range of possible height values the drone can take
         self.WORLD_ZS = (50, 100)                 #World Boundaries (Z Axis)
 
