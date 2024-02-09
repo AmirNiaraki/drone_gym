@@ -23,6 +23,21 @@ def apply_mask(image, mask):
     result = cv2.bitwise_and(image, image, mask=mask)
     return result
 
+def find_box(points_list, margin):
+    all_x = [point[0] for points in points_list for point in points]
+    all_y = [point[1] for points in points_list for point in points]
+
+    min_x, max_x = min(all_x), max(all_x)
+    min_y, max_y = min(all_y), max(all_y)
+
+    # Add a margin to the bounding box
+    min_x -= margin
+    min_y -= margin
+    max_x += margin
+    max_y += margin
+
+    return int(min_x), int(min_y), int(max_x), int(max_y)
+
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Select and crop a region of interest in an image")
 parser.add_argument("image_path", type=str, help="Path to the input image")
@@ -77,6 +92,12 @@ while True:
 # Create and apply the final mask for all polygons
 final_mask = create_mask(gray_image, all_points)
 result = apply_mask(image, final_mask)
+
+print(all_points)
+
+min_x, min_y, max_x, max_y = find_box(all_points, 10)
+
+result = result[min_y:max_y, min_x:max_x]
 
 # if the image comes out as RGB, convert to Grayscale
 try:
