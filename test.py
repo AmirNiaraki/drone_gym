@@ -8,7 +8,7 @@ import time
 from drone_environment import droneEnv
 import sys
 
-env=droneEnv(render=True, generate_world=False)
+env=droneEnv(render=True, generate_world=True)
 
 # Load the trained agent
 try:
