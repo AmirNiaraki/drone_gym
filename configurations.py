@@ -20,7 +20,6 @@ class Configs:
         # Number of seeds (for reward generation)
         self.SEEDS = 100
 
-        # Size of random rewards (TODO: Confirm this. Make it all caps?)
         # The world generates square patches with sizes ranging between (1,10)
         self.square_size_range = (1, 10)
 

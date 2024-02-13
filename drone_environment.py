@@ -44,6 +44,7 @@ class droneEnv(gym.Env):
         self.cfg = Configs()
         self.wind = self.cfg.DEFAULT_WIND
         self.location = [0, 0, 0]
+        self.orientation = True
 
         # observation space: [location, wind, battery]
         self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
@@ -341,7 +342,7 @@ class droneEnv(gym.Env):
         # Effectivly the number of 1's in the array
         self.world_rewards = np.count_nonzero(self.world)
 
-    def move_cost(self):
+    def move_cost(self, hover_cost=0.1, wind_effect=0.05):
         """
         Calculates move cost. Depends on action taken, wind, drag (from drag_table).
 
@@ -350,8 +351,6 @@ class droneEnv(gym.Env):
         Returns: cost
         """
         
-        # constant cost to represent drone hovering
-        hover_cost = 0.2
 
         # print('inside move_cost() method \n actions: ', self.action[0] , self.action[1], 'winds: ', self.wind[0], self.wind[1])
         # Finding the relative angle of wind to drone
@@ -365,9 +364,9 @@ class droneEnv(gym.Env):
         try: 
             self.drag = self.cfg.drag_table.iloc[round(self.wind_angle / 45.), round((self.relative_velocity - 12) / 5)] * self.drag_normalizer_coef
         except:
-            print('relative velocity/angles out of bounds.')
+            # print('relative velocity/angles out of bounds.')
             # defualt drag
-            self.drag = 0.1 * self.drag_normalizer_coef
+            self.drag = wind_effect * self.drag_normalizer_coef
 
         # apply drag and hover
         cost = self.drag * self.relative_velocity ** 2 + hover_cost
