@@ -4,6 +4,29 @@ import cv2
 import numpy as np
 import argparse
 
+# Create a full npy array of the polygon edges and vertices
+# this way the points can be used as sentinel values for the CC algo
+def interpolate(all_polygons):
+    polygons = []
+
+    for polygon in all_polygons:
+        points = []
+
+        for i in range(len(points) - 1):
+            x_start, y_start = points[i]
+            x_end, y_end = points[i + 1]
+
+            # Bresenham's line algorithm
+            edge = list(zip(*cv2.line(np.zeros_like(image), 
+                        (x_start, y_start), (x_end, y_end), 
+                        color=255, thickness=1)[0].nonzero())
+                    )
+            points.extend(edge)
+        
+        polygons.append(point)
+
+    return polygons
+
 # Create a mask for the selected region
 def create_mask(image, points_list):
     mask = np.zeros(image.shape[:2], dtype=np.uint8)
@@ -95,8 +118,8 @@ result = apply_mask(image, final_mask)
 
 print(all_points)
 
+# find the bounding box around the polygons with a margin of 10 and crop
 min_x, min_y, max_x, max_y = find_box(all_points, 10)
-
 result = result[min_y:max_y, min_x:max_x]
 
 # if the image comes out as RGB, convert to Grayscale
@@ -111,4 +134,4 @@ cv2.imwrite('output_image.png', result)
 # Div by 255 to normalize (black = 1, white = 0)
 # This is necessary for the environment to properly upload
 np.save("output_image", result // 255)
-np.save("output_image_points", all_points)
+np.save("output_polygons", interpolate(result))

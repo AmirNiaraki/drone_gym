@@ -108,8 +108,8 @@ class droneEnv(gym.Env):
         self.world[int(-self.visible_y / 2 + self.location[1]) : int(self.visible_y / 2 + self.location[1]),
                    int(-self.visible_x / 2 + self.location[0]) : int(self.visible_x / 2 + self.location[0])] = 0
         
-        return score
-        
+        return score        
+
     def step(self, action, DISPLAY=False):
         '''
         Moves drone and calculates reward based on seen anomalies and cost of move. Can print info to terminal if DISPLAY=True.

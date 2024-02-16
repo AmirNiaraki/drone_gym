@@ -16,47 +16,103 @@ steps 	= 0
 num_iterations = 1
 rewards = []
 
-# get range of coverage from list of polygon points
-img_points = np.load("output_image_points.npy")
-area_bounds =  {"miny" : np.min(img_points[:,1]), 
-				"maxy" : np.max(img_points[:,1]),
-				"minx" : np.min(img_points[:,0]),
-				"maxx" : np.max(img_points[:,0])}
+# load the polygons from image_editor (should have vertices and edges)
+img = np.load("output_polygons.npy")
 
-# initialize drone's starting position
-env.world = np.load("output_image.npy")
-env.location[0] = max(area_bounds["minx"], env.cfg.PADDING_X)
-env.location[1] = max(area_bounds["miny"], env.cfg.PADDING_Y)
-env.location[2] = 100
+# Loop through each polygon in the image seperately
+# TODO: 
+# 	currently resets init position for each polygon. Ideally it should
+# 	not teleport from one polygon to the next but instead travel from polygon a
+# 	to polygon b.
+for polygon in img:
 
-print("\nImage shape: " + str(env.world.shape) + "\n" +
-	  "x-range: " + str(area_bounds["minx"]) + "-" + str(area_bounds["maxx"]) + "\n" +
-	  "y-range: " + str(area_bounds["miny"]) + "-" + str(area_bounds["maxy"]) + "\n\n")
+	# set our currently observed polygon
+	env.curr_polygon = polygon
 
-# while the environment isn't finished
-while not env.done:
-	# go right
-	while LTR == 1 and env.location[0] < area_bounds["maxx"] and env.location[0] < env.cfg.WORLD_XS[1]:
-		# take step
-		obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
-		steps += 1
-		rewards.append(reward)
+	# set the initial drone location within the bounds of the polygon
+	# set it within the max of the x and y direction of the polygon
+	# TODO:
+	#	If we are traveling horizontally we probably just
+	# 	need to start from the max x and not care if we are in the max y
+	# 	as the algorithm will double back when it reaches the edge in x direction
+	#	same is true for vertical travel
 
-	# go left
-	while LTR == -1 and env.location[0] > area_bounds["minx"] and env.location[0] > env.cfg.WORLD_XS[0]:
-		# take step left
-		obs, reward, done, trunc, info = env.step([-env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
-		steps += 1
-		rewards.append(reward)
+	env.location[0] = max(polygon[:, 0].min(), env.cfg.PADDING_X)
+	env.location[1] = max(polygon[:, 1].min(), env.cfg.PADDING_Y)
+	env.location[2] = 100
 
-	LTR = -LTR
+	# drone movement within the boundaries of the polygon
 
-	# drone should be at left/right edge of bounded area
-	if (env.location[1] < area_bounds["maxy"]):
-		obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
-	# if the drone can't move down it must be finished
-	else:
-		break
+if env.orientation == 0:
+	LTR = 1
+	for i in range(num_iterations):
+		som_obs=env.reset()
+		print('Iteration: ', i, '\n supposed location: ', env.location, 'configurations: ', env.cfg.init_location)
 
-	num_iterations += 1
-env.close()
+		while True and not env.done:
+			if LTR == 1:
+				while not check_boundary(env.location, polygon) and not env.done:
+					obs, reward, done, truncs, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
+					steps += 1
+					rewards.append(reward)
+
+			if LTR == -1:
+				while not check_boundary(env.location, polygon) and not env.done:
+					obs, reward, done, trunc, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
+					steps += 1
+					rewards.append(reward)
+
+			LTR = -LTR
+
+			if not check_boundary(env.location, polygon) and not env.done:
+				obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
+			else:
+				break
+
+		num_iterations += 1
+	env.close()
+else:
+	UTD = 1  # Up-to-Down
+	for i in range(num_iterations):
+		som_obs = env.reset()
+		print('Iteration: ', i, '\n supposed location: ',
+			env.location, 'configurations: ', env.cfg.init_location)
+
+		# Vertical Movement
+		while not check_boundary(env.location, polygon) and not env.done:
+			if UTD == 1:
+				while not check_boundary(env.location, polygon) and not env.done:
+					obs, reward, done, truncs, info = env.step(
+						[0, env.visible_y * (1 - env.cfg.OVERLAP), 0])
+					steps += 1
+					rewards.append(reward)
+
+			if UTD == -1:
+				while not check_boundary(env.location, polygon) and not env.done:
+					obs, reward, done, trunc, info = env.step(
+						[0, -env.visible_y * (1 - env.cfg.OVERLAP), 0])
+					steps += 1
+					rewards.append(reward)
+
+			UTD = -UTD
+
+			obs, reward, done, trunc, info = env.step(
+				[env.visible_x * (1 - env.cfg.OVERLAP), 0, 0])
+
+		# Horizontal Movement
+		while not check_boundary(env.location, polygon) and not env.done:
+			obs, reward, done, truncs, info = env.step(
+				[-env.visible_x * (1 - env.cfg.OVERLAP), 0, 0])
+			steps += 1
+			rewards.append(reward)
+
+		num_iterations += 1
+
+	env.close()
+
+	# Checks if we are within the boundary of the polygon
+	def check_boundary(location, polygon):
+		x_min, x_max = polygon[:, 0].min(), polygon[:, 0].max()
+		y_min, y_max = polygon[:, 1].min(), polygon[:, 1].max()
+
+		return x_min <= location[0] <= x_max and y_min <= location[1] <= y_max
