@@ -23,10 +23,8 @@ try:
 	modeldir = sys.argv[2]
 except:
 	modeldir = f"Training/Models/{int(time.time())}/"
-
 print("log directory: " + logdir)
 print("model directory: " + modeldir)
-
 
 # make environment
 env = droneEnv(render=False, generate_world=True)
@@ -36,9 +34,10 @@ check_env(env)
 model = A2C('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
 # training hyperparameters
-timesteps = 100000
+timesteps = 1000000
 iterations = 1
 
+# training loop
 for iters in range(0, iterations):
 	print('iteration: ', iters)
 	model.learn(total_timesteps=timesteps, reset_num_timesteps=False, tb_log_name=modeldir)

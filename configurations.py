@@ -18,7 +18,7 @@ class Configs:
         # self.init_state = [1, 1, 1]
         
         # Number of seeds (for reward generation)
-        self.SEEDS = 100
+        self.SEEDS = 400
 
         # The world generates square patches with sizes ranging between (1,10)
         self.square_size_range = (1, 10)
@@ -64,7 +64,7 @@ class Configs:
         self.FULL_BATTERY = 100.0
 
         # Maximum allowed drone speed
-        self.MAX_SPEED = 5
+        self.MAX_SPEED = 20
 
         # Percent overlap (CC only)
         # Should be in range (0,1) exclusive
