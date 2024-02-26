@@ -45,7 +45,7 @@ class droneEnv(gym.Env):
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
         self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
         self.orientation = True
-        self.move_coeff = 0.5               # scaling coefficient for movement penalty in step()
+        self.move_coeff = 6.0               # scaling coefficient for movement penalty in step()
         self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
 
         # observation space: [location, wind, battery]
@@ -152,8 +152,8 @@ class droneEnv(gym.Env):
         movement = self.move_coeff * cost
         self.reward += (detection - movement)
         ###
-        # print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
-        # time.sleep(1)
+        print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
+        time.sleep(1)
         ###
         self.total_reward += self.reward
                
@@ -303,8 +303,6 @@ class droneEnv(gym.Env):
     def close(self):
         """
         End the simulation and clean stuff up
-
-        TODO: I think this method needs to override close from gym.env
 
         Parameters: -
 

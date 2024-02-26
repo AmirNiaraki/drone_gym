@@ -18,7 +18,7 @@ class Configs:
         # self.init_state = [1, 1, 1]
         
         # Number of seeds (for reward generation)
-        self.SEEDS = 1000
+        self.SEEDS = 500
 
         # The world generates square patches with sizes ranging between (1,10)
         self.square_size_range = (1, 10)
@@ -47,7 +47,7 @@ class Configs:
         ### WORLD, REWARDS, and SIMULATION ###
         # Range of possible height values the drone can take
         # 80-400ft -> 25-125m
-        self.WORLD_ZS = (24, 25)                 # World Boundaries (Z Axis)
+        self.WORLD_ZS = (25, 125)                 # World Boundaries (Z Axis)
         
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame
