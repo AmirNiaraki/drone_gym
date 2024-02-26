@@ -152,8 +152,8 @@ class droneEnv(gym.Env):
         movement = self.move_coeff * cost
         self.reward += (detection - movement)
         ###
-        print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
-        time.sleep(1)
+        # print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
+        # time.sleep(1)
         ###
         self.total_reward += self.reward
                
