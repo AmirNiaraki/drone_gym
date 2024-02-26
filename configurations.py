@@ -18,7 +18,7 @@ class Configs:
         # self.init_state = [1, 1, 1]
         
         # Number of seeds (for reward generation)
-        self.SEEDS = 400
+        self.SEEDS = 1000
 
         # The world generates square patches with sizes ranging between (1,10)
         self.square_size_range = (1, 10)
@@ -34,8 +34,8 @@ class Configs:
         ### DRONE CAMERA ###
         # Resolution of drone camera
         # resolution such that minimum height does not upscale images
-        self.FRAME_W = 30 * 2
-        self.FRAME_H = 20 * 2
+        self.FRAME_W = int(14.5 * 2)
+        self.FRAME_H = int(9 * 2)
 
         # Drone camera's FOV
         self.FOV_X = 60 / 2                 #degrees for halve of the field of view horizontaly
@@ -47,7 +47,7 @@ class Configs:
         ### WORLD, REWARDS, and SIMULATION ###
         # Range of possible height values the drone can take
         # 80-400ft -> 25-125m
-        self.WORLD_ZS = (25, 125)                 # World Boundaries (Z Axis)
+        self.WORLD_ZS = (24, 25)                 # World Boundaries (Z Axis)
         
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame

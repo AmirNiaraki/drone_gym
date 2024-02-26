@@ -40,11 +40,13 @@ class droneEnv(gym.Env):
         self.generate_world = generate_world
 
         # hardcoded
-        self.world_name = "output_image.npy"
-        self.cfg = Configs()
-        self.wind = self.cfg.DEFAULT_WIND
-        self.location = [0, 0, 0]
+        self.world_name = "output_image.npy"# world file to be loaded if generate_world param is false
+        self.cfg = Configs()                # config file for environment parameters
+        self.wind = self.cfg.DEFAULT_WIND   # environment wind
+        self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
         self.orientation = True
+        self.move_coeff = 0.5               # scaling coefficient for movement penalty in step()
+        self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
 
         # observation space: [location, wind, battery]
         self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
@@ -55,7 +57,7 @@ class droneEnv(gym.Env):
         # initialize everything else with reset()
         self.reset()
         
-    def update_frame (self):
+    def update_frame(self):
         """
         Updates self.frame based on variables from configurations determining what the drone can see
 
@@ -84,10 +86,7 @@ class droneEnv(gym.Env):
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
             
             # Resizes that crop to the resolution of the drone (upscale)
-            resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
-            # added_battery = self.concat_battery(resized)
-            # self.frame = added_battery
-            self.frame = resized
+            self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
 
     def fetch_anomaly(self):
         """
@@ -97,17 +96,14 @@ class droneEnv(gym.Env):
 
         Returns: score (# of black pixels)
         """
-        # drone view picture with no battery
-        nobat = (self.frame)[0 : self.cfg.FRAME_H, 0 : self.cfg.FRAME_W]
-        
         # sum of black pixels
         # nobat / 255 normalizes values black pixels = 1
-        score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.sum(nobat / 255, dtype=np.int32)
+        score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.count_nonzero(self.frame)
         
         # Remove the detected objects from the world
         # Set everything equal to 0 because black and white is inverted in update_frame()
-        self.world[int(-self.visible_y / 2 + self.location[1]) : int(self.visible_y / 2 + self.location[1]),
-                   int(-self.visible_x / 2 + self.location[0]) : int(self.visible_x / 2 + self.location[0])] = 0
+        self.world[self.boundaries[0] : self.boundaries[1],
+                   self.boundaries[2] : self.boundaries[3]] = 0
         
         return score
         
@@ -144,45 +140,51 @@ class droneEnv(gym.Env):
             self.location[2] = max(self.location[2] + self.action[2], self.cfg.WORLD_ZS[0])  
         else:
             self.location[2] = min(self.location[2] + self.action[2], self.cfg.WORLD_ZS[1])
-             
-        # Subtract move_cost from reward
-        self.reward -= self.move_cost()
+        
+        # calculate cost of movement
+        cost = self.move_cost()
+
+        # Subtract move_cost from reward and battery
+        self.battery = max(0, self.battery - cost)
+
+        # calculate total reward
+        detection = self.detection_coeff * self.fetch_anomaly()
+        movement = self.move_coeff * cost
+        self.reward += (detection - movement)
+        ###
+        # print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
+        # time.sleep(1)
+        ###
+        self.total_reward += self.reward
                
+        # increase step count
+        self.step_count += 1
+
         # End simulation if the battery runs out
         if self.battery<1:
-            self.reward -= 10
             self.done = True
             self.close()
 
         # End simulation if 80% of the rewards are collected
         if self.total_reward >= self.world_rewards * 0.8:
-            self.reward += 10
             self.done = True
             self.close()
+
+        # End simulation if exceeding maximum allowed steps
+        if self.cfg.MAX_STEPS < self.step_count:
+            self.done=True
          
         # render new world
         if self.render and not self.done:
             self.renderer()
         time.sleep(0.001)
         
-        # Add any anomalies to reward with fetch_anomaly
-        self.reward += self.fetch_anomaly()
-        self.total_reward += self.reward
-        self.reward.astype(np.float32)
-
-        # increase step count
-        self.step_count += 1
-        
         # concatenate observation to be returned
         observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
         observation = np.array(observation)
 
-        if DISPLAY == True:
+        if DISPLAY:
             self.display_info()
-
-        # check if simulation is done
-        if self.cfg.MAX_STEPS < self.step_count:
-            self.done=True
         
         info = {}
         truncated = False
@@ -234,7 +236,7 @@ class droneEnv(gym.Env):
 
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
-        self.thread=Thread(target=self.update_frame, args=(), daemon=True)
+        self.thread = Thread(target=self.update_frame, args=(), daemon=True)
         self.thread.start()
         time.sleep(0.01)
 
@@ -342,7 +344,7 @@ class droneEnv(gym.Env):
         # Effectivly the number of 1's in the array
         self.world_rewards = np.count_nonzero(self.world)
 
-    def move_cost(self, hover_cost=0.1, wind_effect=0.05):
+    def move_cost(self, hover_cost=0.1):
         """
         Calculates move cost. Depends on action taken, wind, drag (from drag_table).
 
@@ -366,16 +368,13 @@ class droneEnv(gym.Env):
         except:
             # print('relative velocity/angles out of bounds.')
             # defualt drag
-            self.drag = wind_effect * self.drag_normalizer_coef
+            self.drag = self.drag_normalizer_coef
 
         # apply drag and hover
         cost = self.drag * self.relative_velocity ** 2 + hover_cost
 
         # Method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
-        
-        # apply cost to battery
-        self.battery = max(0, self.battery - cost)
         
         # TESTING
         # print("action:\t" + str(self.action) + "\twind:\t" + str(self.wind) + "\tcost\t" + str(cost))
