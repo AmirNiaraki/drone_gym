@@ -40,10 +40,13 @@ class droneEnv(gym.Env):
         self.generate_world = generate_world
 
         # hardcoded
-        self.world_name = "output_image.npy"
-        self.cfg = Configs()
-        self.wind = self.cfg.DEFAULT_WIND
-        self.location = [0, 0, 0]
+        self.world_name = "output_image.npy"# world file to be loaded if generate_world param is false
+        self.cfg = Configs()                # config file for environment parameters
+        self.wind = self.cfg.DEFAULT_WIND   # environment wind
+        self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
+        self.orientation = True
+        self.move_coeff = 0.5               # scaling coefficient for movement penalty in step()
+        self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
 
         # observation space: [location, wind, battery]
         self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
@@ -54,7 +57,7 @@ class droneEnv(gym.Env):
         # initialize everything else with reset()
         self.reset()
         
-    def update_frame (self):
+    def update_frame(self):
         """
         Updates self.frame based on variables from configurations determining what the drone can see
 
@@ -83,10 +86,7 @@ class droneEnv(gym.Env):
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
             
             # Resizes that crop to the resolution of the drone (upscale)
-            resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
-            # added_battery = self.concat_battery(resized)
-            # self.frame = added_battery
-            self.frame = resized
+            self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
 
     def fetch_anomaly(self):
         """
@@ -96,17 +96,14 @@ class droneEnv(gym.Env):
 
         Returns: score (# of black pixels)
         """
-        # drone view picture with no battery
-        nobat = (self.frame)[0 : self.cfg.FRAME_H, 0 : self.cfg.FRAME_W]
-        
         # sum of black pixels
         # nobat / 255 normalizes values black pixels = 1
-        score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.sum(nobat / 255, dtype=np.int32)
+        score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.count_nonzero(self.frame)
         
         # Remove the detected objects from the world
         # Set everything equal to 0 because black and white is inverted in update_frame()
-        self.world[int(-self.visible_y / 2 + self.location[1]) : int(self.visible_y / 2 + self.location[1]),
-                   int(-self.visible_x / 2 + self.location[0]) : int(self.visible_x / 2 + self.location[0])] = 0
+        self.world[self.boundaries[0] : self.boundaries[1],
+                   self.boundaries[2] : self.boundaries[3]] = 0
         
         return score
         
@@ -143,45 +140,57 @@ class droneEnv(gym.Env):
             self.location[2] = max(self.location[2] + self.action[2], self.cfg.WORLD_ZS[0])  
         else:
             self.location[2] = min(self.location[2] + self.action[2], self.cfg.WORLD_ZS[1])
-             
-        # Subtract move_cost from reward
-        self.reward -= self.move_cost()
+        
+        # calculate cost of movement
+        cost = self.move_cost()
+
+        # Subtract move_cost from reward and battery
+        self.battery = max(0, self.battery - cost)
+
+        # calculate total reward
+        detection = self.detection_coeff * self.fetch_anomaly()
+        movement = self.move_coeff * cost
+        self.reward += (detection - movement)
+        ###
+        # print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
+        # time.sleep(1)
+        ###
+        self.total_reward += self.reward
                
-        # Check if battery is empty
+        # increase step count
+        self.step_count += 1
+
+        # End simulation if the battery runs out
         if self.battery<1:
-             self.reward-=10
-             self.done=True
-             self.close()
+            self.done = True
+            self.close()
+
+        # End simulation if 80% of the rewards are collected
+        if self.total_reward >= self.world_rewards * 0.8:
+            self.done = True
+            self.close()
+
+        # End simulation if exceeding maximum allowed steps
+        if self.cfg.MAX_STEPS < self.step_count:
+            self.done=True
          
         # render new world
         if self.render and not self.done:
             self.renderer()
         time.sleep(0.001)
         
-        # Add any anomalies to reward with fetch_anomaly
-        self.reward += self.fetch_anomaly()
-        self.total_reward += self.reward
-        self.reward.astype(np.float32)
-
-        # increase step count
-        self.step_count += 1
-        
         # concatenate observation to be returned
         observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
         observation = np.array(observation)
 
-        if DISPLAY == True:
+        if DISPLAY:
             self.display_info()
-
-        # check if simulation is done
-        if self.cfg.MAX_STEPS < self.step_count:
-            self.done=True
         
         info = {}
         truncated = False
 
         return observation, self.reward, self.done, truncated, info
-            
+        
     def reset(self, seed=None, options=None):
         """
         End and close current simulation. Start a new simulation with reinitialized vars.
@@ -205,15 +214,16 @@ class droneEnv(gym.Env):
         self.action = [0, 0, 0]
         self.battery = 100.0
 
-        # do not simplify
-        self.location[0] = self.cfg.init_location[0]
-        self.location[1] = self.cfg.init_location[1]
-        self.location[2] = self.cfg.init_location[2]
+        # random start location
+        self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
+        self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
+        self.location[2] = np.random.uniform(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])
 
         # generate world
         if self.generate_world:
-            self.world_genertor() # sets self.world
-
+            # updates self.world
+            self.world_genertor()
+            
             # Save as numpy array and png
             # np.save('test_world', self.world)
             # cv2.imwrite("test_world.png", self.world * 255)
@@ -221,9 +231,12 @@ class droneEnv(gym.Env):
             # Load a saved world
             self.world = np.load(self.world_name)
 
+        # sum total rewards (updates self.world_rewards)
+        self.world_reward()
+
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
-        self.thread=Thread(target=self.update_frame, args=(), daemon=True)
+        self.thread = Thread(target=self.update_frame, args=(), daemon=True)
         self.thread.start()
         time.sleep(0.01)
 
@@ -269,23 +282,23 @@ class droneEnv(gym.Env):
                     except:
                         pass
 
-    def loc_from_state(self):
-        """
-        I don't understand the purpose of this method, why are there two different ways to get location?
+    # def loc_from_state(self):
+    #     """
+    #     I don't understand the purpose of this method, why are there two different ways to get location?
 
-        Parameters: -
+    #     Parameters: -
 
-        Returns: Amir: location=[x,y,z] where states=[1,1,1] corresponds to loc=[100,100,60] meteres
-        """
-        state_x_size = (self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]) / self.cfg.STATES_X
-        state_y_size = (self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]) / self.cfg.STATES_Y
-        state_z_size = (self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]) / self.cfg.STATES_Z
+    #     Returns: Amir: location=[x,y,z] where states=[1,1,1] corresponds to loc=[100,100,60] meteres
+    #     """
+    #     state_x_size = (self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]) / self.cfg.STATES_X
+    #     state_y_size = (self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]) / self.cfg.STATES_Y
+    #     state_z_size = (self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]) / self.cfg.STATES_Z
 
-        loc = [self.cfg.WORLD_XS[0] + state_x_size * (self.state[0] - 1),
-               self.cfg.WORLD_YS[0] + state_y_size * (self.state[1] - 1),
-               self.cfg.WORLD_ZS[0] + state_z_size * (self.state[2] - 1)]
+    #     loc = [self.cfg.WORLD_XS[0] + state_x_size * (self.state[0] - 1),
+    #            self.cfg.WORLD_YS[0] + state_y_size * (self.state[1] - 1),
+    #            self.cfg.WORLD_ZS[0] + state_z_size * (self.state[2] - 1)]
         
-        return loc
+    #     return loc
     
     def close(self):
         """
@@ -309,32 +322,38 @@ class droneEnv(gym.Env):
         # Close windows
         cv2.destroyAllWindows()
         
-    def concat_battery(self, input_frame):
-        """
-        Amir: Receives frame as np array, adds a column the end that represent battery level
+    # def concat_battery(self, input_frame):
+    #     """
+    #     Amir: Receives frame as np array, adds a column the end that represent battery level
 
-        Parameters: input_frame
+    #     Parameters: input_frame
 
-        Returns: self.output_frame (input_frame with battery info, TODO: why self?)
-        """
-        full_pixels_count = int(self.cfg.FRAME_H * self.battery / 100)
-        full_pixels = np.zeros([full_pixels_count, 1])
-        full_pixels.astype(int)
-        empty_pixels = (np.zeros([self.cfg.FRAME_H - full_pixels_count,1]) + 1) * 255
-        empty_pixels.astype(int)
+    #     Returns: self.output_frame (input_frame with battery info, TODO: why self?)
+    #     """
+    #     full_pixels_count = int(self.cfg.FRAME_H * self.battery / 100)
+    #     full_pixels = np.zeros([full_pixels_count, 1])
+    #     full_pixels.astype(int)
+    #     empty_pixels = (np.zeros([self.cfg.FRAME_H - full_pixels_count,1]) + 1) * 255
+    #     empty_pixels.astype(int)
 
-        battery_img = np.uint8(np.concatenate((empty_pixels, full_pixels)))
-        self.output_frame = np.concatenate((input_frame, battery_img),axis = 1)
-        return self.output_frame
+    #     battery_img = np.uint8(np.concatenate((empty_pixels, full_pixels)))
+    #     self.output_frame = np.concatenate((input_frame, battery_img),axis = 1)
+    #     return self.output_frame
         
-    def move_cost(self):
+    def world_reward(self):
+        # Effectivly the number of 1's in the array
+        self.world_rewards = np.count_nonzero(self.world)
+
+    def move_cost(self, hover_cost=0.1):
         """
-        Calculates move cost. Depends on action taken, wind, drag (from drag_table). Applies cost to the battery.
+        Calculates move cost. Depends on action taken, wind, drag (from drag_table).
 
         Parameters: -
 
-        Returns: self.cost (TODO: again, why self?)
+        Returns: cost
         """
+        
+
         # print('inside move_cost() method \n actions: ', self.action[0] , self.action[1], 'winds: ', self.wind[0], self.wind[1])
         # Finding the relative angle of wind to drone
         self.wind_angle = degrees(acos((self.action[0] * self.wind[0] + self.action[1] * self.wind[1]) /
@@ -347,16 +366,15 @@ class droneEnv(gym.Env):
         try: 
             self.drag = self.cfg.drag_table.iloc[round(self.wind_angle / 45.), round((self.relative_velocity - 12) / 5)] * self.drag_normalizer_coef
         except:
-            print('relative velocity/angles out of bounds.')
+            # print('relative velocity/angles out of bounds.')
             # defualt drag
-            self.drag = 0.1 * self.drag_normalizer_coef
-        cost = self.drag * self.relative_velocity ** 2
+            self.drag = self.drag_normalizer_coef
+
+        # apply drag and hover
+        cost = self.drag * self.relative_velocity ** 2 + hover_cost
 
         # Method to find the step cost based on drag force, for now everything costs 1
         # self.cost= self.c_d *((self.action[0]-self.wind[0])**2 + (self.action[1]-self.wind[1])**2)
-        
-        # apply cost to battery
-        self.battery = max(0, self.battery - cost)
         
         # TESTING
         # print("action:\t" + str(self.action) + "\twind:\t" + str(self.wind) + "\tcost\t" + str(cost))

@@ -12,15 +12,14 @@ from math import tan, radians, degrees, acos, sqrt
 class Configs:
     def __init__(self):
         # See loc_from_state in drone_environment
-        self.STATES_X = 100
-        self.STATES_Y = 100
-        self.STATES_Z = 1
-        self.init_state = [1, 1, 1]
+        # self.STATES_X = 100
+        # self.STATES_Y = 100
+        # self.STATES_Z = 1
+        # self.init_state = [1, 1, 1]
         
         # Number of seeds (for reward generation)
         self.SEEDS = 1000
 
-        # Size of random rewards (TODO: Confirm this. Make it all caps?)
         # The world generates square patches with sizes ranging between (1,10)
         self.square_size_range = (1, 10)
 
@@ -34,45 +33,40 @@ class Configs:
 
         ### DRONE CAMERA ###
         # Resolution of drone camera
-        self.FRAME_W = 150
-        self.FRAME_H = 100
+        # resolution such that minimum height does not upscale images
+        self.FRAME_W = int(14.5 * 2)
+        self.FRAME_H = int(9 * 2)
 
         # Drone camera's FOV
         self.FOV_X = 60 / 2                 #degrees for halve of the field of view horizontaly
         self.FOV_Y = 40 / 2                 #degrees for halve of the field of view verticaly
 
         # Drone Camera FPS
-        self.FPS = 30
-
-
+        # self.FPS = 30
 
         ### WORLD, REWARDS, and SIMULATION ###
         # Range of possible height values the drone can take
-        self.WORLD_ZS = (50, 100)                 #World Boundaries (Z Axis)
+        # 80-400ft -> 25-125m
+        self.WORLD_ZS = (24, 25)                 # World Boundaries (Z Axis)
+        
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame
         # Needed so that the drone's view isn't outide of the world
-        # TODO: Needs to be calculated according the the drone's height and FOV. Move calculations from update_frame to here or droneEnv constructor
+        # Calculated according the the drone's height and FOV. Move calculations from update_frame to here or droneEnv constructor
         self.PADDING_X = int(tan(radians(self.FOV_X)) * self.WORLD_ZS[1])
         self.PADDING_Y = int(tan(radians(self.FOV_Y)) * self.WORLD_ZS[1])
 
         # World dimensions
-        self.WORLD_XS = (self.PADDING_X, 500)         #World Boundaries (X Axis)
-        self.WORLD_YS = (self.PADDING_Y, 250)         #World Boundaries (Y Axis)
+        self.WORLD_XS = (self.PADDING_X, 800)         #World Boundaries (X Axis)
+        self.WORLD_YS = (self.PADDING_Y, 600)         #World Boundaries (Y Axis)
 
         ### DRONE ###
-
-        # Drone's location starting location
-        self.init_location = [self.PADDING_X,
-                              self.PADDING_Y,
-                              self.WORLD_ZS[1]]
-
         self.FULL_BATTERY = 100.0
 
         # Maximum allowed drone speed
-        self.MAX_SPEED = 5
+        self.MAX_SPEED = 20
 
-        # Percent overlap
+        # Percent overlap (CC only)
         # Should be in range (0,1) exclusive
         self.OVERLAP = 0.90
 
