@@ -1,5 +1,8 @@
-**.png
-**.jpg
-justB.png
-Training/Models/
+*.png
+*.jpg
+*.json
+*.npy
+Training
 __pycache__/
+.vscode
+/venv

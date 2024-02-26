@@ -1,33 +1,34 @@
 # -*- coding: utf-8 -*-
-import gym
-from stable_baselines3 import DQN
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3 import PPO, A2C
-import os
-import time
+# from stable_baselines3.common.evaluation import evaluate_policy
+# from stable_baselines3.common.env_checker import check_env
 
 from stable_baselines3 import PPO, A2C
 import os
 import time
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
+import sys
 
-env=droneEnv('disc', render=True)
+env=droneEnv(render=True, generate_world=False)
 
 # Load the trained agent
-model_path = "Training/Models/1677789857/10000000"
-model = PPO('MlpPolicy', env)
-model.load(model_path)
+try:
+	model_path = sys.argv[1]
+except:
+	print("enter model name (no .zip) as CML arg")
+	exit()
 
-episodes=10 
+model = PPO.load(model_path, env=env)
+
+episodes=10
 
 for ep in range(episodes):
-    obs=env.reset()
-    done=False
-    ep_reward=[]
-    while not done:
-        action, _= model.predict(obs)
-        obs, reward, done, info = env.step(action)
-        ep_reward.append(reward)
+	obs, _ = env.reset()
+	print(obs)
 
-    print(sum(ep_reward))
+	running_reward=[]
+	while not env.done:
+		action, info= model.predict(obs)
+		obs, reward, done, trunc, info = env.step(action)
+		running_reward.append(reward)
+
+	print(sum(running_reward))

@@ -6,7 +6,7 @@ Created on Thu Nov 10 00:31:10 2022
 """
 
 from stable_baselines3.common.env_checker import check_env
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
 
 
 env = droneEnv(observation_mode='cont',action_mode='cont', render=True)
