@@ -47,6 +47,7 @@ class droneEnv(gym.Env):
         self.orientation = True
         self.move_coeff = 6.0               # scaling coefficient for movement penalty in step()
         self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
+        self.explore_coeff = 1.0            # scaling coefficient for exploreation reward in step()
 
         # observation space: [location, wind, battery]
         self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
@@ -97,7 +98,6 @@ class droneEnv(gym.Env):
         Returns: score (# of black pixels)
         """
         # sum of black pixels
-        # nobat / 255 normalizes values black pixels = 1
         score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.count_nonzero(self.frame)
         
         # Remove the detected objects from the world
@@ -105,6 +105,20 @@ class droneEnv(gym.Env):
         self.world[self.boundaries[0] : self.boundaries[1],
                    self.boundaries[2] : self.boundaries[3]] = 0
         
+        return score
+    
+    def explore(self):
+        """
+        Returns the number of unexplored pixels (0's) from new frame, then sets all pixels in frame to 1 (explored)
+        """
+        # number of unexplored pixles in visible area
+        # (total visible area) - number of 1's in visible area
+        score = abs(self.boundaries[0] - self.boundaries[1])*abs(self.boundaries[2] - self.boundaries[3]) - np.count_nonzero(self.explore_world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]])
+
+        # explore seen pixles
+        self.explore_world[self.boundaries[0] : self.boundaries[1],
+                           self.boundaries[2] : self.boundaries[3]] = 1
+
         return score
         
     def step(self, action, DISPLAY=False):
@@ -147,13 +161,14 @@ class droneEnv(gym.Env):
         # Subtract move_cost from reward and battery
         self.battery = max(0, self.battery - cost)
 
-        # calculate total reward
-        detection = self.detection_coeff * self.fetch_anomaly()
-        movement = self.move_coeff * cost
-        self.reward += (detection - movement)
+        # calculate and apply reward
+        explore = self.explore_coeff *      self.explore()
+        detection = self.detection_coeff *  self.fetch_anomaly()
+        movement = self.move_coeff *        cost
+        self.reward = detection + explore - movement
         ###
-        # print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\tlocation: " + str(self.location))
-        # time.sleep(1)
+        print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\texplore: " + str(explore))
+        time.sleep(1)
         ###
         self.total_reward += self.reward
                
@@ -230,6 +245,11 @@ class droneEnv(gym.Env):
         else:
             # Load a saved world
             self.world = np.load(self.world_name)
+        
+        # generate array to describe explored pixels
+        # 0 = unexplored
+        # 1 = explored
+        self.explore_world = np.zeros((self.world.shape[0], self.world.shape[1]))
 
         # sum total rewards (updates self.world_rewards)
         self.world_reward()

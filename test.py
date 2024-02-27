@@ -23,7 +23,7 @@ episodes=10
 
 for ep in range(episodes):
 	obs, _ = env.reset()
-	print(obs)
+	# print(obs)
 
 	running_reward=[]
 	while not env.done:
@@ -31,4 +31,4 @@ for ep in range(episodes):
 		obs, reward, done, trunc, info = env.step(action)
 		running_reward.append(reward)
 
-	print(sum(running_reward))
+	# print(sum(running_reward))
