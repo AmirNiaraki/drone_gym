@@ -47,7 +47,7 @@ class Configs:
         ### WORLD, REWARDS, and SIMULATION ###
         # Range of possible height values the drone can take
         # 80-400ft -> 25-125m
-        self.WORLD_ZS = (25, 125)                 # World Boundaries (Z Axis)
+        self.WORLD_ZS = (25, 75)                 # World Boundaries (Z Axis)
         
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame

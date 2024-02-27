@@ -47,7 +47,7 @@ class droneEnv(gym.Env):
         self.orientation = True
         self.move_coeff = 6.0               # scaling coefficient for movement penalty in step()
         self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 1.0            # scaling coefficient for exploreation reward in step()
+        self.explore_coeff = 0.001           # scaling coefficient for exploreation reward in step()
 
         # observation space: [location, wind, battery]
         self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
@@ -58,6 +58,7 @@ class droneEnv(gym.Env):
         # initialize everything else with reset()
         self.reset()
         
+    # helper method (runs in separate thread)
     def update_frame(self):
         """
         Updates self.frame based on variables from configurations determining what the drone can see
@@ -74,6 +75,8 @@ class droneEnv(gym.Env):
             self.visible_y = tan(radians(self.cfg.FOV_Y)) * 2 * self.location[2]
             
             # black/white inversion for display (not calculations)
+            # in self.world, 1's are rewards. Get's converted to 0 to be displayed as black
+            # in self.world, 0's are empty pixles. Get's converted to 255 to be displayed as white
             self.world_img = np.uint8((1 - self.world) * 255)
 
             # take snap of the sim based on location [x,y,z]
@@ -86,9 +89,12 @@ class droneEnv(gym.Env):
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
             
-            # Resizes that crop to the resolution of the drone (upscale)
+            # Resizes that crop to the resolution of the drone (downscale)
+            # in self.frame,  255's are empty
+            # in self.frame, 0's are rewards
             self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
 
+    # helper method
     def fetch_anomaly(self):
         """
         Checks self.frame for rewards (black pixels), and then removes them from the world (we think).
@@ -97,16 +103,20 @@ class droneEnv(gym.Env):
 
         Returns: score (# of black pixels)
         """
-        # sum of black pixels
+        # sum of black pixels (0's) after resizing visible area (see update_frame())
         score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.count_nonzero(self.frame)
-        
+    
+        # seen anamolies = # of 1's in self.world from visible area
+        self.seen_anomalies += np.count_nonzero(self.world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]])
+
         # Remove the detected objects from the world
-        # Set everything equal to 0 because black and white is inverted in update_frame()
+        # Set everything equal to 0 (empty)
         self.world[self.boundaries[0] : self.boundaries[1],
                    self.boundaries[2] : self.boundaries[3]] = 0
         
         return score
     
+    # helper method
     def explore(self):
         """
         Returns the number of unexplored pixels (0's) from new frame, then sets all pixels in frame to 1 (explored)
@@ -166,9 +176,13 @@ class droneEnv(gym.Env):
         detection = self.detection_coeff *  self.fetch_anomaly()
         movement = self.move_coeff *        cost
         self.reward = detection + explore - movement
-        ###
-        print("detection: " + str(detection) + "\tmovement: " + str(movement) + "\texplore: " + str(explore))
-        time.sleep(1)
+        ### DEBUGGING
+        # print("detection: " + str(detection) + 
+        #       "\tmovement: " + str(movement) + 
+        #       "\texplore: " + str(explore) + 
+        #       "\tseen-anom: " + str(self.seen_anomalies) +
+        #       "\ttotal anom: " + str(self.total_world_anomalies))
+        # time.sleep(1)
         ###
         self.total_reward += self.reward
                
@@ -177,16 +191,19 @@ class droneEnv(gym.Env):
 
         # End simulation if the battery runs out
         if self.battery<1:
+            print("RAN OUT OF BATTERY")
             self.done = True
             self.close()
 
         # End simulation if 80% of the rewards are collected
-        if self.total_reward >= self.world_rewards * 0.8:
+        if self.seen_anomalies >= self.total_world_anomalies * 0.8:
+            print("COLLECTED 80% OF ANAMOLIES")
             self.done = True
             self.close()
 
         # End simulation if exceeding maximum allowed steps
         if self.cfg.MAX_STEPS < self.step_count:
+            print("EXCEEDED STEP COUNT")
             self.done=True
          
         # render new world
@@ -252,7 +269,7 @@ class droneEnv(gym.Env):
         self.explore_world = np.zeros((self.world.shape[0], self.world.shape[1]))
 
         # sum total rewards (updates self.world_rewards)
-        self.world_reward()
+        self.world_anomalies()
 
         # Define thread for getting the frame to the agent at all times
         time.sleep(0.01)
@@ -358,9 +375,10 @@ class droneEnv(gym.Env):
     #     self.output_frame = np.concatenate((input_frame, battery_img),axis = 1)
     #     return self.output_frame
         
-    def world_reward(self):
-        # Effectivly the number of 1's in the array
-        self.world_rewards = np.count_nonzero(self.world)
+    def world_anomalies(self):
+        # Effectivly the number of 1's in the world array
+        self.total_world_anomalies = np.count_nonzero(self.world)
+        self.seen_anomalies = 0
 
     def move_cost(self, hover_cost=0.1):
         """
