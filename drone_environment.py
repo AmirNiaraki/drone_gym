@@ -45,12 +45,12 @@ class droneEnv(gym.Env):
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
         self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
         self.orientation = True
-        self.move_coeff = 6.0               # scaling coefficient for movement penalty in step()
+        self.move_coeff = 0.1               # scaling coefficient for movement penalty in step()
         self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 0.001           # scaling coefficient for exploreation reward in step()
+        self.explore_coeff = 0.1           # scaling coefficient for exploreation reward in step()
 
         # observation space: [location, wind, battery]
-        self.observation_space = Box(low=-2000, high=2000, shape=(6,), dtype=np.float64)
+        self.observation_space = Box(low=-1, high=1, shape=(self.cfg.FRAME_H, self.cfg.FRAME_W + 1), dtype=np.float64)
 
         # action space: [x-velocity, y-velocity, z-velocity]
         self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
@@ -130,7 +130,27 @@ class droneEnv(gym.Env):
                            self.boundaries[2] : self.boundaries[3]] = 1
 
         return score
-        
+
+    # helper method        
+    def get_obs(self):
+        # resized version of explored world
+        area_covered = cv2.resize(self.explore_world[self.boundaries[0] : self.boundaries[1],
+                                                     self.boundaries[2] : self.boundaries[3]],
+                                  dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H),
+                                  interpolation=cv2.INTER_NEAREST)
+        # area_covered = np.array(area_covered)
+        # create normalized vector of state var
+        normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+                                            [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+                                            [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+                                            [self.wind[0] / 10.0],
+                                            [self.wind[1] / 10.0],
+                                            [self.battery / 100.0]])
+        # concat zeros to get dimensions correct
+        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((area_covered.shape[0] - normalized_state_vector.shape[0], 1))))
+        # create observation array=[area | state vec]
+        return np.concatenate((area_covered, normalized_state_vector), axis=1)
+
     def step(self, action, DISPLAY=False):
         '''
         Moves drone and calculates reward based on seen anomalies and cost of move. Can print info to terminal if DISPLAY=True.
@@ -191,19 +211,25 @@ class droneEnv(gym.Env):
 
         # End simulation if the battery runs out
         if self.battery<1:
-            print("RAN OUT OF BATTERY")
+            ###
+            # print("RAN OUT OF BATTERY")
+            ###
             self.done = True
             self.close()
 
         # End simulation if 80% of the rewards are collected
         if self.seen_anomalies >= self.total_world_anomalies * 0.8:
-            print("COLLECTED 80% OF ANAMOLIES")
+            ###
+            # print("COLLECTED 80% OF ANAMOLIES")
+            ###
             self.done = True
             self.close()
 
         # End simulation if exceeding maximum allowed steps
         if self.cfg.MAX_STEPS < self.step_count:
-            print("EXCEEDED STEP COUNT")
+            ###
+            # print("EXCEEDED STEP COUNT")
+            ###
             self.done=True
          
         # render new world
@@ -211,9 +237,8 @@ class droneEnv(gym.Env):
             self.renderer()
         time.sleep(0.001)
         
-        # concatenate observation to be returned
-        observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
-        observation = np.array(observation)
+        # OBSERVATION
+        observation = self.get_obs()
 
         if DISPLAY:
             self.display_info()
@@ -277,11 +302,8 @@ class droneEnv(gym.Env):
         self.thread.start()
         time.sleep(0.01)
 
-        observation = [self.location[0], self.location[1], self.location[2], self.wind[0], self.wind[1], self.battery]
-        observation = np.array(observation)
-
+        observation = self.get_obs()
         info = {}
-
         return observation, info
       
     def world_genertor(self):
@@ -319,24 +341,6 @@ class droneEnv(gym.Env):
                     except:
                         pass
 
-    # def loc_from_state(self):
-    #     """
-    #     I don't understand the purpose of this method, why are there two different ways to get location?
-
-    #     Parameters: -
-
-    #     Returns: Amir: location=[x,y,z] where states=[1,1,1] corresponds to loc=[100,100,60] meteres
-    #     """
-    #     state_x_size = (self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]) / self.cfg.STATES_X
-    #     state_y_size = (self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]) / self.cfg.STATES_Y
-    #     state_z_size = (self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]) / self.cfg.STATES_Z
-
-    #     loc = [self.cfg.WORLD_XS[0] + state_x_size * (self.state[0] - 1),
-    #            self.cfg.WORLD_YS[0] + state_y_size * (self.state[1] - 1),
-    #            self.cfg.WORLD_ZS[0] + state_z_size * (self.state[2] - 1)]
-        
-    #     return loc
-    
     def close(self):
         """
         End the simulation and clean stuff up
@@ -356,24 +360,6 @@ class droneEnv(gym.Env):
 
         # Close windows
         cv2.destroyAllWindows()
-        
-    # def concat_battery(self, input_frame):
-    #     """
-    #     Amir: Receives frame as np array, adds a column the end that represent battery level
-
-    #     Parameters: input_frame
-
-    #     Returns: self.output_frame (input_frame with battery info, TODO: why self?)
-    #     """
-    #     full_pixels_count = int(self.cfg.FRAME_H * self.battery / 100)
-    #     full_pixels = np.zeros([full_pixels_count, 1])
-    #     full_pixels.astype(int)
-    #     empty_pixels = (np.zeros([self.cfg.FRAME_H - full_pixels_count,1]) + 1) * 255
-    #     empty_pixels.astype(int)
-
-    #     battery_img = np.uint8(np.concatenate((empty_pixels, full_pixels)))
-    #     self.output_frame = np.concatenate((input_frame, battery_img),axis = 1)
-    #     return self.output_frame
         
     def world_anomalies(self):
         # Effectivly the number of 1's in the world array
