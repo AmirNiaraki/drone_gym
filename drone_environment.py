@@ -147,11 +147,20 @@ class droneEnv(gym.Env):
         # return np.concatenate((area_covered, normalized_state_vector), axis=1)
 
         ### EXPLORE WORLD | STATE VECTOR
+        # resize world
+        explore_resized = cv2.resize(self.explore_world, dsize=(10, 10), interpolation=cv2.INTER_NEAREST)
+
         # norm vector
-        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((self.explore_world.shape[0] - normalized_state_vector.shape[0], 1))))
+        normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+                                            [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+                                            [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+                                            [self.wind[0] / 10.0],
+                                            [self.wind[1] / 10.0],
+                                            [self.battery / 100.0]])
+        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((explore_resized.shape[0] - normalized_state_vector.shape[0], 1))))
 
         # concatenate entire explore array with the state vector
-        return np.concatenate((self.explore_world, normalized_state_vector))
+        return np.concatenate((explore_resized, normalized_state_vector), axis=1)
 
     def step(self, action, DISPLAY=False):
         '''
