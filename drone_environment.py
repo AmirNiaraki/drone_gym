@@ -49,12 +49,6 @@ class droneEnv(gym.Env):
         self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
         self.explore_coeff = 0.1           # scaling coefficient for exploreation reward in step()
 
-        # observation space: [location, wind, battery]
-        self.observation_space = Box(low=-1, high=1, shape=(self.cfg.FRAME_H, self.cfg.FRAME_W + 1), dtype=np.float64)
-
-        # action space: [x-velocity, y-velocity, z-velocity]
-        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
-
         # initialize everything else with reset()
         self.reset()
         
@@ -133,23 +127,31 @@ class droneEnv(gym.Env):
 
     # helper method        
     def get_obs(self):
-        # resized version of explored world
-        area_covered = cv2.resize(self.explore_world[self.boundaries[0] : self.boundaries[1],
-                                                     self.boundaries[2] : self.boundaries[3]],
-                                  dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H),
-                                  interpolation=cv2.INTER_NEAREST)
-        # area_covered = np.array(area_covered)
-        # create normalized vector of state var
-        normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-                                            [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-                                            [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
-                                            [self.wind[0] / 10.0],
-                                            [self.wind[1] / 10.0],
-                                            [self.battery / 100.0]])
-        # concat zeros to get dimensions correct
-        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((area_covered.shape[0] - normalized_state_vector.shape[0], 1))))
-        # create observation array=[area | state vec]
-        return np.concatenate((area_covered, normalized_state_vector), axis=1)
+        ###  EXPLORE FRAME | STATE VECTOR
+        # # resized version of explored world
+        # area_covered = cv2.resize(self.explore_world[self.boundaries[0] : self.boundaries[1],
+        #                                              self.boundaries[2] : self.boundaries[3]],
+        #                           dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H),
+        #                           interpolation=cv2.INTER_NEAREST)
+        # # area_covered = np.array(area_covered)
+        # # create normalized vector of state var
+        # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+        #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+        #                                     [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+        #                                     [self.wind[0] / 10.0],
+        #                                     [self.wind[1] / 10.0],
+        #                                     [self.battery / 100.0]])
+        # # concat zeros to get dimensions correct
+        # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((area_covered.shape[0] - normalized_state_vector.shape[0], 1))))
+        # # create observation array=[area | state vec]
+        # return np.concatenate((area_covered, normalized_state_vector), axis=1)
+
+        ### EXPLORE WORLD | STATE VECTOR
+        # norm vector
+        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((self.explore_world.shape[0] - normalized_state_vector.shape[0], 1))))
+
+        # concatenate entire explore array with the state vector
+        return np.concatenate((self.explore_world, normalized_state_vector))
 
     def step(self, action, DISPLAY=False):
         '''
@@ -303,6 +305,13 @@ class droneEnv(gym.Env):
         time.sleep(0.01)
 
         observation = self.get_obs()
+
+        # observation space should be normalized between 0 and 1
+        self.observation_space = Box(low=-1, high=1, shape=observation.shape, dtype=np.float64)
+
+        # continuous action space: [x-velocity, y-velocity, z-velocity]
+        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+
         info = {}
         return observation, info
       
