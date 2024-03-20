@@ -45,8 +45,8 @@ class droneEnv(gym.Env):
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
         self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
         self.orientation = True
-        self.move_coeff = 0.1               # scaling coefficient for movement penalty in step()
-        self.detection_coeff = 0.5          # scaling coefficient for detection reward in step()
+        self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
+        self.detection_coeff = 2.0          # scaling coefficient for detection reward in step()
         self.explore_coeff = 0.1           # scaling coefficient for exploreation reward in step()
 
         # initialize everything else with reset()
@@ -128,7 +128,7 @@ class droneEnv(gym.Env):
     # helper method        
     def get_obs(self):
         ###  EXPLORE FRAME | STATE VECTOR
-        # # resized version of explored world
+        # resized version of explored world
         # area_covered = cv2.resize(self.explore_world[self.boundaries[0] : self.boundaries[1],
         #                                              self.boundaries[2] : self.boundaries[3]],
         #                           dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H),
@@ -144,23 +144,32 @@ class droneEnv(gym.Env):
         # # concat zeros to get dimensions correct
         # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((area_covered.shape[0] - normalized_state_vector.shape[0], 1))))
         # # create observation array=[area | state vec]
-        # return np.concatenate((area_covered, normalized_state_vector), axis=1)
+        # obs = np.concatenate((area_covered, normalized_state_vector), axis=1)
 
         ### EXPLORE WORLD | STATE VECTOR
-        # resize world
-        explore_resized = cv2.resize(self.explore_world, dsize=(10, 10), interpolation=cv2.INTER_NEAREST)
+        # # resize world
+        # explore_resized = cv2.resize(self.explore_world, dsize=(10, 10), interpolation=cv2.INTER_NEAREST)
 
-        # norm vector
-        normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-                                            [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-                                            [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
-                                            [self.wind[0] / 10.0],
-                                            [self.wind[1] / 10.0],
-                                            [self.battery / 100.0]])
-        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((explore_resized.shape[0] - normalized_state_vector.shape[0], 1))))
+        # # norm vector
+        # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+        #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+        #                                     [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+        #                                     [self.wind[0] / 10.0],
+        #                                     [self.wind[1] / 10.0],
+        #                                     [self.battery / 100.0]])
+        # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((explore_resized.shape[0] - normalized_state_vector.shape[0], 1))))
 
-        # concatenate entire explore array with the state vector
-        return np.concatenate((explore_resized, normalized_state_vector), axis=1)
+        # # concatenate entire explore array with the state vector
+        # obs = np.concatenate((explore_resized, normalized_state_vector), axis=1)
+
+        obs = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+                        [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+                        [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+                        [self.wind[0] / 10.0],
+                        [self.wind[1] / 10.0],
+                        [self.battery / 100.0]])
+
+        return obs
 
     def step(self, action, DISPLAY=False):
         '''
@@ -200,7 +209,8 @@ class droneEnv(gym.Env):
         cost = self.move_cost()
 
         # Subtract move_cost from reward and battery
-        self.battery = max(0, self.battery - cost)
+        battery_coeff = 0.5
+        self.battery = max(0, self.battery - cost * battery_coeff)
 
         # calculate and apply reward
         explore = self.explore_coeff *      self.explore()

@@ -34,7 +34,7 @@ check_env(env)
 model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
 # training hyperparameters
-timesteps = 100000
+timesteps = 250000
 iterations = 1
 
 # training loop
