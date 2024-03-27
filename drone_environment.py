@@ -43,7 +43,7 @@ class droneEnv(gym.Env):
         self.world_name = "output_image.npy"# world file to be loaded if generate_world param is false
         self.cfg = Configs()                # config file for environment parameters
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
-        self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
+        self.location = [0, 0]           # location declataration. Initialization is in reset()
         self.orientation = True
 
         # Coefficients
@@ -67,28 +67,29 @@ class droneEnv(gym.Env):
         # print('top of the thread')
         while not self.done:
             # Recalculate drone's field of view
-            self.visible_x = tan(radians(self.cfg.FOV_X)) * 2 * self.location[2]
-            self.visible_y = tan(radians(self.cfg.FOV_Y)) * 2 * self.location[2]
+            # self.visible_x = tan(radians(self.cfg.FOV_X)) * 2 * self.location[2]
+            # self.visible_y = tan(radians(self.cfg.FOV_Y)) * 2 * self.location[2]
             
-            # black/white inversion for display (not calculations)
-            # in self.world, 1's are rewards. Get's converted to 0 to be displayed as black
-            # in self.world, 0's are empty pixles. Get's converted to 255 to be displayed as white
+            # # black/white inversion for display (not calculations)
+            # # in self.world, 1's are rewards. Get's converted to 0 to be displayed as black
+            # # in self.world, 0's are empty pixles. Get's converted to 255 to be displayed as white
             self.world_img = np.uint8((1 - self.world) * 255)
 
-            # take snap of the sim based on location [x,y,z]
-            # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            self.boundaries = [int(-self.visible_y / 2 + self.location[1]),
-                               int( self.visible_y / 2 + self.location[1]),
-                               int(-self.visible_x / 2 + self.location[0]),
-                               int( self.visible_x / 2 + self.location[0])]
+            # # take snap of the sim based on location [x,y,z]
+            # # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
+            self.boundaries = [-self.cfg.FRAME_W + self.location[0],
+                               self.cfg.FRAME_W  + self.location[0],
+                               -self.cfg.FRAME_H + self.location[1],
+                               self.cfg.FRAME_H  + self.location[1]]
 
-            # Crop the drone's view from the world
-            crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
+            # # Crop the drone's view from the world
+            self.frame = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
             
-            # Resizes that crop to the resolution of the drone (downscale)
-            # in self.frame,  255's are empty
-            # in self.frame, 0's are rewards
-            self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
+            # # Resizes that crop to the resolution of the drone (downscale)
+            # # in self.frame,  255's are empty
+            # # in self.frame, 0's are rewards
+            # self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
+            
 
     # helper method
     def fetch_anomaly(self):
