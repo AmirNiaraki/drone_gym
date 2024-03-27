@@ -45,9 +45,11 @@ class droneEnv(gym.Env):
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
         self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
         self.orientation = True
+
+        # Coefficients
         self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
-        self.detection_coeff = 2.0          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 0.1           # scaling coefficient for exploreation reward in step()
+        self.detection_coeff = 3.0          # scaling coefficient for detection reward in step()
+        self.explore_coeff = 0.01           # scaling coefficient for exploreation reward in step()
 
         # initialize everything else with reset()
         self.reset()
@@ -133,7 +135,7 @@ class droneEnv(gym.Env):
         #                                              self.boundaries[2] : self.boundaries[3]],
         #                           dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H),
         #                           interpolation=cv2.INTER_NEAREST)
-        # # area_covered = np.array(area_covered)
+        # area_covered = np.array(area_covered)
         # # create normalized vector of state var
         # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
         #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
@@ -162,12 +164,25 @@ class droneEnv(gym.Env):
         # # concatenate entire explore array with the state vector
         # obs = np.concatenate((explore_resized, normalized_state_vector), axis=1)
 
-        obs = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-                        [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-                        [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
-                        [self.wind[0] / 10.0],
-                        [self.wind[1] / 10.0],
-                        [self.battery / 100.0]])
+        ## FRAME | STATE VECTOR
+        normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+                                            [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+                                            [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+                                            [self.wind[0] / 10.0],
+                                            [self.wind[1] / 10.0],
+                                            [self.battery / 100.0]])
+        # concat zeros to get dimensions correct
+        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((self.frame.shape[0] - normalized_state_vector.shape[0], 1))))
+        # create observation array=[area | state vec]
+        obs = np.concatenate((self.frame // 255, normalized_state_vector), axis=1)
+
+        ### NORMALIZED STATE VECTOR
+        # obs = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+        #                 [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+        #                 [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
+        #                 [self.wind[0] / 10.0],
+        #                 [self.wind[1] / 10.0],
+        #                 [self.battery / 100.0]])
 
         return obs
 
