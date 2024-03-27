@@ -168,7 +168,6 @@ class droneEnv(gym.Env):
         ## FRAME | STATE VECTOR
         normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
                                             [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-                                            [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
                                             [self.wind[0] / 10.0],
                                             [self.wind[1] / 10.0],
                                             [self.battery / 100.0]])
@@ -215,11 +214,6 @@ class droneEnv(gym.Env):
             self.location[1] = max(self.location[1] + self.action[1], self.cfg.WORLD_YS[0])  
         else:
             self.location[1] = min(self.location[1] + self.action[1], self.cfg.WORLD_YS[1])
-        # z-direction
-        if  self.action[2] < 0:
-            self.location[2] = max(self.location[2] + self.action[2], self.cfg.WORLD_ZS[0])  
-        else:
-            self.location[2] = min(self.location[2] + self.action[2], self.cfg.WORLD_ZS[1])
         
         # calculate cost of movement
         cost = self.move_cost()
@@ -311,7 +305,6 @@ class droneEnv(gym.Env):
         # random start location
         self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
         self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
-        self.location[2] = np.random.uniform(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])
 
         # generate world
         if self.generate_world:
@@ -344,8 +337,8 @@ class droneEnv(gym.Env):
         # observation space should be normalized between 0 and 1
         self.observation_space = Box(low=-1, high=1, shape=observation.shape, dtype=np.float64)
 
-        # continuous action space: [x-velocity, y-velocity, z-velocity]
-        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+        # continuous action space: [x-velocity, y-velocity]
+        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(2,), dtype=np.float64)
 
         info = {}
         return observation, info
