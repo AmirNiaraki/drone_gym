@@ -25,7 +25,7 @@ class Configs:
 
         # Wind speed
         # Wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
-        self.DEFAULT_WIND = (0.0, 0.0)
+        self.DEFAULT_WIND = (0.001, 0.001)
 
         # How many steps per episode
         self.MAX_STEPS = 1000

@@ -77,14 +77,13 @@ class droneEnv(gym.Env):
 
             # # take snap of the sim based on location [x,y,z]
             # # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            self.boundaries = [-self.cfg.FRAME_W + self.location[0],
-                               self.cfg.FRAME_W  + self.location[0],
-                               -self.cfg.FRAME_H + self.location[1],
-                               self.cfg.FRAME_H  + self.location[1]]
+            self.boundaries = [int(-self.cfg.FRAME_H/2 + self.location[1]),
+                               int(self.cfg.FRAME_H/2  + self.location[1]),
+                               int(-self.cfg.FRAME_W/2 + self.location[0]),
+                               int(self.cfg.FRAME_W/2  + self.location[0])]
 
             # # Crop the drone's view from the world
             self.frame = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
-            
             # # Resizes that crop to the resolution of the drone (downscale)
             # # in self.frame,  255's are empty
             # # in self.frame, 0's are rewards
@@ -327,10 +326,11 @@ class droneEnv(gym.Env):
         self.world_anomalies()
 
         # Define thread for getting the frame to the agent at all times
+        self.frame = np.zeros((self.cfg.FRAME_W, self.cfg.FRAME_H))
         time.sleep(0.01)
         self.thread = Thread(target=self.update_frame, args=(), daemon=True)
         self.thread.start()
-        time.sleep(0.01)
+        time.sleep(1)
 
         observation = self.get_obs()
 
@@ -448,24 +448,24 @@ class droneEnv(gym.Env):
 
         Returns: -
         """
-        try:
-            cv2.imshow('just fetched', self.frame)
+        # try:
+        cv2.imshow('just fetched', self.frame)
 
-            # change to grayscale
-            _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
-            # ???
-            img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
-            # add info text
-            img = cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'step ' + str(self.step_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle, 2)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            cv2.imshow('World view', img)
+        # change to grayscale
+        _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
+        # ???
+        img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
+        # add info text
+        img = cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+        img = cv2.putText(img, 'step ' + str(self.step_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+        img = cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+        img = cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle, 2)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+        # img = cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+        cv2.imshow('World view', img)
             
-        except:
-            print('frame not available for render!')
-            pass
+        # except: 
+        #     print('frame not available for render!')
+        #     pass
         
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
