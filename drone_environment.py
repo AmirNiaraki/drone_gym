@@ -6,7 +6,7 @@ Created on Sun Nov  6 15:35:20 2022
 
 """
 import gymnasium as gym
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, Discrete
 import numpy as np
 # import pandas as pd
 from math import tan, radians, degrees, acos, sqrt
@@ -165,23 +165,22 @@ class droneEnv(gym.Env):
         # obs = np.concatenate((explore_resized, normalized_state_vector), axis=1)
 
         ## FRAME | STATE VECTOR
-        normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-                                            [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-                                            [self.wind[0] / 10.0],
-                                            [self.wind[1] / 10.0],
-                                            [self.battery / 100.0]])
-        # concat zeros to get dimensions correct
-        normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((self.frame.shape[0] - normalized_state_vector.shape[0], 1))))
-        # create observation array=[area | state vec]
-        obs = np.concatenate((self.frame // 255, normalized_state_vector), axis=1)
+        # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+        #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+        #                                     [self.wind[0] / 10.0],
+        #                                     [self.wind[1] / 10.0],
+        #                                     [self.battery / 100.0]])
+        # # concat zeros to get dimensions correct
+        # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((self.frame.shape[0] - normalized_state_vector.shape[0], 1))))
+        # # create observation array=[area | state vec]
+        # obs = np.concatenate((self.frame // 255, normalized_state_vector), axis=1)
 
         ### NORMALIZED STATE VECTOR
-        # obs = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-        #                 [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-        #                 [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
-        #                 [self.wind[0] / 10.0],
-        #                 [self.wind[1] / 10.0],
-        #                 [self.battery / 100.0]])
+        obs = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
+                        [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
+                        [self.wind[0] / 10.0],
+                        [self.wind[1] / 10.0],
+                        [self.battery / 100.0]])
 
         return obs
 
@@ -199,9 +198,19 @@ class droneEnv(gym.Env):
 
         Returns: observation (array of location, battery, wind), self.reward, self.info
         '''
-        self.action = action
+        self.action = (0,0)
         self.reward = 0
         
+        # convert discrete action to continuous
+        if action == 0:
+            self.action = (self.cfg.x_speed, 0)
+        elif action == 1:
+            self.action = (0, self.cfg.y_speed)
+        elif action == 2:
+            self.action = (-self.cfg.x_speed, 0)
+        elif action == 3:
+            self.action = (0, -self.cfg.y_speed)
+
         # Move the Drone
         # x-direction
         if  self.action[0] < 0:
@@ -214,6 +223,7 @@ class droneEnv(gym.Env):
         else:
             self.location[1] = min(self.location[1] + self.action[1], self.cfg.WORLD_YS[1])
         
+
         # calculate cost of movement
         cost = self.move_cost()
 
@@ -338,7 +348,12 @@ class droneEnv(gym.Env):
         self.observation_space = Box(low=-1, high=1, shape=observation.shape, dtype=np.float64)
 
         # continuous action space: [x-velocity, y-velocity]
-        self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(2,), dtype=np.float64)
+        # self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(2,), dtype=np.float64)
+        
+        # discrete action space
+        # {    0,  1,    2,    3}
+        # {right, up, left, down}
+        self.action_space = Discrete(n=4, start=0)
 
         info = {}
         return observation, info
