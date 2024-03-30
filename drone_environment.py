@@ -176,11 +176,11 @@ class droneEnv(gym.Env):
         # obs = np.concatenate((self.frame // 255, normalized_state_vector), axis=1)
 
         ### NORMALIZED STATE VECTOR
-        obs = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-                        [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-                        [self.wind[0] / 10.0],
-                        [self.wind[1] / 10.0],
-                        [self.battery / 100.0]])
+        obs = np.array([(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]),
+                        (self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]),
+                        self.wind[0] / 10.0,
+                        self.wind[1] / 10.0,
+                        self.battery / 100.0])
 
         return obs
 
@@ -312,8 +312,12 @@ class droneEnv(gym.Env):
         self.battery = 100.0
 
         # random start location
-        self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
-        self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
+        # self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
+        # self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
+
+        # start in top left corner
+        self.location[0] =  self.cfg.WORLD_XS[0]
+        self.location[1] =  self.cfg.WORLD_YS[0]
 
         # generate world
         if self.generate_world:
