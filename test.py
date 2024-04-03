@@ -11,7 +11,6 @@ import sys
 
 env=droneEnv(render=True, generate_world=False)
 check_env(env)
-
 # Load the trained agent
 try:
 	model_path = sys.argv[1]
@@ -19,7 +18,7 @@ except:
 	print("enter model name (no .zip) as CML arg")
 	exit()
 
-model = PPO.load(model_path, env=env)
+model = A2C.load(model_path, env=env)
 
 episodes=10
 
