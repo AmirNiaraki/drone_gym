@@ -228,7 +228,7 @@ class droneEnv(gym.Env):
         cost = self.move_cost()
 
         # Subtract move_cost from reward and battery
-        battery_coeff = 0.5
+        battery_coeff = 0.01
         self.battery = max(0, self.battery - cost * battery_coeff)
 
         # calculate and apply reward
@@ -237,13 +237,16 @@ class droneEnv(gym.Env):
         movement = self.move_coeff *        cost
         self.reward = detection + explore - movement
         ### DEBUGGING
-        # print("detection: " + str(detection) + 
-        #       "\tmovement: " + str(movement) + 
-        #       "\texplore: " + str(explore) + 
-        #       "\tseen-anom: " + str(self.seen_anomalies) +
-        #       "\ttotal anom: " + str(self.total_world_anomalies))
+        print("detection: " + str(detection) + 
+              "\tmovement: " + str(movement) + 
+              "\texplore: " + str(explore) + 
+              "\tseen-anom: " + str(self.seen_anomalies) +
+              "\ttotal anom: " + str(self.total_world_anomalies))
         # time.sleep(1)
         ###
+
+
+
         self.total_reward += self.reward
                
         # increase step count
@@ -286,6 +289,9 @@ class droneEnv(gym.Env):
         info = {}
         truncated = False
 
+        # printing locations
+        print('location: ', self.location)
+        print('total reward: ', self.total_reward)
         return observation, self.reward, self.done, truncated, info
         
     def reset(self, seed=None, options=None):

@@ -27,7 +27,7 @@ print("log directory: " + logdir)
 print("model directory: " + modeldir)
 
 # make environment
-env = droneEnv(render=False, generate_world=True)
+env = droneEnv(render=True, generate_world=False)
 check_env(env)
 
 # make algorithm
