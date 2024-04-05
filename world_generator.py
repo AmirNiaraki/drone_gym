@@ -12,20 +12,38 @@ import numpy as np
 import cv2
 import random
 from configurations import Configs
+import sys
 
-class world_generator():
-    def __init__(self):
+class WorldGenerator():
+    def __init__(self, file_name=None, world_y=None, world_x=None):
         self.cfg = Configs()
 
+    def run(self, file_name=None, world_y=None, world_x=None):
+        if world_y is not None and world_x is not None and isinstance(world_y, (int, float)) and isinstance(world_x, (int, float)):
+            self.cfg.WORLD_YS = (self.cfg.WORLD_YS[0], world_y)
+            self.cfg.WORLD_XS = (self.cfg.WORLD_XS[0], world_x)
+
+        if file_name is not None:
+            self.name = file_name
+        else:
+            self.name = 'world' + str(random.randint(1, 1000000))
+
+
         # generate a new world
-        self.gen_world()
+        WorldGenerator.gen_world(self)
 
+        # save points of "shape" as numpy array
+        np.save(self.name + "_points")
         # save as numpy array and png
-        name = 'world' + str(random.randint(1, 1000000))
-        np.save(name, self.world)
-        cv2.imwrite(name + ".png", self.world * 255)
-        print("\nWorld saved as " + name + "\n")
+        np.save(self.name, self.world)
+        gray_scaled = (self.world * 255).astype(np.uint8)
+        cv2.imwrite(self.name + ".png", gray_scaled)
+        print("\nWorld saved as " + self.name + "\n")
 
+        # return the self object so we can use it if world_generator is called
+        return self.world
+
+    @staticmethod
     def gen_world(self):
         """"
         Generates a new world for the drone based on size and # seeds specified in configurations.py
@@ -35,7 +53,13 @@ class world_generator():
         seeds = self.cfg.SEEDS
 
         # tuple representing dimensions of world
-        size = (self.cfg.WORLD_YS[1] + self.cfg.PADDING_Y, self.cfg.WORLD_XS[1] + self.cfg.PADDING_X)
+        y = self.cfg.WORLD_YS[1] + self.cfg.PADDING_Y
+        x = self.cfg.WORLD_XS[1] + self.cfg.PADDING_X
+
+        size = (y, x)
+
+        self.points = [[0, 0],[0, y],[x, y],[x, 0]]
+        print(self.points)
 
         # initialize world with zeros
         self.world = np.zeros(size, dtype=int)
@@ -60,5 +84,21 @@ class world_generator():
                         pass
 
 if __name__ == "__main__":
-    wg_instance = world_generator()
+    if len(sys.argv) > 1 and sys.argv[1] == "help":
+        print("Usage: python3 world_generator.py [file_name] [world_y] [world_x]")
+        sys.exit(0)
+
+    file_name = sys.argv[1] if len(sys.argv) > 1 else None
+
+    try:
+        world_y = int(sys.argv[2]) if len(sys.argv) > 2 else None
+        world_x = int(sys.argv[3]) if len(sys.argv) > 3 else None
+
+    except ValueError:
+        print("Error: world_y and world_x must be integers.")
+        print("Usage: python3 world_generator.py [file_name] [world_y] [world_x]")
+
+        sys.exit(1)
+
+    wg_instance = WorldGenerator().run(file_name, world_y, world_x)
         
