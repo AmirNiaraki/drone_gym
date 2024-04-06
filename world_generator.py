@@ -59,6 +59,7 @@ class world_generator():
                     except:
                         pass
 
+
+#Generates the world when the code is ran as a stand a lone modual
 if __name__ == "__main__":
     wg_instance = world_generator()
-        
