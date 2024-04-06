@@ -64,8 +64,8 @@ class Configs:
 
         # Maximum allowed drone speed
         self.MAX_SPEED = 20
-        self.x_speed = 2
-        self.y_speed = 2
+        self.x_speed = 5
+        self.y_speed = 5
 
         # Percent overlap (CC only)
         # Should be in range (0,1) exclusive

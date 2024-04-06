@@ -27,14 +27,14 @@ print("log directory: " + logdir)
 print("model directory: " + modeldir)
 
 # make environment
-env = droneEnv(render=False, generate_world=True)
+env = droneEnv(render=False, generate_world=False)
 check_env(env)
 
 # make algorithm
 model = A2C('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
 # training hyperparameters
-timesteps = 6000000
+timesteps = 100000
 iterations = 1
 
 # training loop

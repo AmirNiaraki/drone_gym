@@ -48,8 +48,8 @@ class droneEnv(gym.Env):
 
         # Coefficients
         self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
-        self.detection_coeff = 10.0          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 0.0           # scaling coefficient for exploreation reward in step()
+        self.detection_coeff = 3.0          # scaling coefficient for detection reward in step()
+        self.explore_coeff = 0.01           # scaling coefficient for exploreation reward in step()
 
         # initialize everything else with reset()
         self.reset()
@@ -228,7 +228,7 @@ class droneEnv(gym.Env):
         cost = self.move_cost()
 
         # Subtract move_cost from reward and battery
-        battery_coeff = 0.5
+        battery_coeff = 0.01
         self.battery = max(0, self.battery - cost * battery_coeff)
 
         # calculate and apply reward
