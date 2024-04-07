@@ -497,23 +497,27 @@ class droneEnv(gym.Env):
             print('Q hit:')
             self.done=True
             self.close()
-    
+
     def display_info(self):
         """
         Prints info to terminal, if DISPLAY=True in step method.
-
         Parameters: -
-
         Returns: -
         """
-        print('==== INFO ==== \n')
+        print('\n====== Step:', self.step_count, '======')
         # print('step count: ', self.step_count)
         # print('battery level: ', self.battery)
         # print('current location: ', self.location)
         # print('current wind angle: ', self.wind_angle)
         # print('relative velocity: ', self.relative_velocity)
-        print('step:', self.step_count, ' reward: ', self.reward)
-        print('\n total reward: ', self.total_reward)
+        print('Reward: ', self.reward)
 
-        
-        print('========= \n')
+        print('\ntotal reward: ', self.total_reward)
+        print('=====================')
+
+#Generates the world when the code is ran as a stand a lone modual
+if __name__ == "__main__":
+	de0 = droneEnv()
+
+	de0.display_info()
+	de0.display_info()

@@ -73,5 +73,7 @@ class Configs:
 
         # Drone's drag
         self.drag_table = pd.read_csv('drag_dataset.csv', index_col=0)
-        
-cfg=Configs()
+
+#Runs Configs when the code is ran as a stand alone modual (For Testing Purposes)
+if __name__ == "__main__":
+	cfg = Configs()
