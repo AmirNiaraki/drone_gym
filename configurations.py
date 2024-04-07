@@ -31,10 +31,6 @@ class Configs:
         self.MAX_STEPS = 1000
 
         ### DRONE CAMERA ###
-        # Resolution of drone camera
-        # resolution such that minimum height does not upscale images
-        self.FRAME_W = int(14.5 * 2)
-        self.FRAME_H = int(9 * 2)
 
         # Drone camera's FOV
         self.FOV_X = 60 / 2                 #degrees for halve of the field of view horizontaly
@@ -46,8 +42,12 @@ class Configs:
         ### WORLD, REWARDS, and SIMULATION ###
         # Range of possible height values the drone can take
         # 80-400ft -> 25-125m
-        self.WORLD_ZS = (25, 75)                 # World Boundaries (Z Axis)
+        self.WORLD_ZS = (50, 75)                 # World Boundaries (Z Axis)
         
+        # Resolution of drone camera
+        # resolution such that minimum height does not upscale images
+        self.FRAME_W = int(self.WORLD_ZS[0] * tan(radians(self.FOV_X)) * 2)
+        self.FRAME_H = int(self.WORLD_ZS[0] * tan(radians(self.FOV_Y)) * 2)
 
         # The padded area of the world is were the drone cannot go to but may appear in the frame
         # Needed so that the drone's view isn't outide of the world
