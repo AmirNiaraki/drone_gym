@@ -33,7 +33,6 @@ print("model directory: " + modeldir)
 env = droneEnv(render=False, generate_world=False)
 check_env(env)
 
-"""
 # make algorithm
 model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
@@ -46,4 +45,3 @@ for iters in range(0, iterations):
 	print('iteration: ', iters)
 	model.learn(total_timesteps=timesteps, reset_num_timesteps=False, tb_log_name=modeldir)
 	model.save(modeldir)
-"""
