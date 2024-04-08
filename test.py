@@ -32,4 +32,4 @@ for ep in range(episodes):
 		obs, reward, done, trunc, info = env.step(action)
 		running_reward.append(reward)
 
-	# print(sum(running_reward))
+	print(sum(running_reward))

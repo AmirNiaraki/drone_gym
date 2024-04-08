@@ -47,9 +47,9 @@ class droneEnv(gym.Env):
         self.orientation = True
 
         # Coefficients
-        self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
+        self.move_coeff = 0.0               # scaling coefficient for movement penalty in step()
         self.detection_coeff = 3.0          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 0.01           # scaling coefficient for exploreation reward in step()
+        self.explore_coeff = 0.1           # scaling coefficient for exploreation reward in step()
 
         # initialize everything else with reset()
         self.reset()
