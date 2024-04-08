@@ -501,8 +501,12 @@ class droneEnv(gym.Env):
         #     pass
 
         if self.path:
-            # image_with_path = draw_lines(self.world_img, self.path)
-            draw_lines(self.world_img, self.path)
+            image_with_lines = draw_lines(img, self.path)
+        else:
+            image_with_lines = img
+
+        # image_with_lines = draw_lines(img, self.path)
+        cv2.imshow('World View', image_with_lines)
         
 
 

@@ -39,7 +39,7 @@ def apply_mask(image, mask):
 def draw_lines(image, points):
     temp_image = image.copy()
     for i in range(len(points) - 1):
-        cv2.line(temp_image, points[i], points[i + 1], (0, 255, 255), 3)
+        cv2.line(temp_image, points[i], points[i + 1], (255, 0, 0), 3)
     return temp_image
 
 def find_box(points_list, margin):
