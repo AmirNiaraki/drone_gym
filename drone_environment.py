@@ -28,7 +28,7 @@ class droneEnv(gym.Env):
     Drone Environment class, extends gym.Env 
         ... many instance variables
     """
-    def __init__(self, render=False, generate_world=True):
+    def __init__(self, render=False, generate_world=True, wname=None, learn=True):
         """
         Constructor.
 
@@ -39,12 +39,16 @@ class droneEnv(gym.Env):
         self.render = render
         self.generate_world = generate_world
 
+        self.learn = learn
+
         # hardcoded
-        self.world_name = "output_image.npy"# world file to be loaded if generate_world param is false
+        if wname is None:
+            self.world_name = "output_image.npy"# world file to be loaded if generate_world param is false
+        else:
+            self.world_name = wname
         self.cfg = Configs()                # config file for environment parameters
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
         self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
-        self.orientation = True
 
         # Coefficients
         self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
@@ -77,10 +81,13 @@ class droneEnv(gym.Env):
 
             # take snap of the sim based on location [x,y,z]
             # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
+            print(f"self.location = {self.location}")
             self.boundaries = [int(-self.visible_y / 2 + self.location[1]),
                                int( self.visible_y / 2 + self.location[1]),
                                int(-self.visible_x / 2 + self.location[0]),
                                int( self.visible_x / 2 + self.location[0])]
+            
+            print(self.boundaries)
 
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
@@ -88,6 +95,7 @@ class droneEnv(gym.Env):
             # Resizes that crop to the resolution of the drone (downscale)
             # in self.frame,  255's are empty
             # in self.frame, 0's are rewards
+
             self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
 
     # helper method
@@ -307,10 +315,14 @@ class droneEnv(gym.Env):
         self.action = [0, 0, 0]
         self.battery = 100.0
 
-        # random start location
-        self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
-        self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
-        self.location[2] = np.random.uniform(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])
+        # random start location if running RL
+        # if not learning, CC will set this before running each shape
+        if self.learn:
+            self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
+            self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
+            self.location[2] = np.random.uniform(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])
+        else:
+            #TODO: We need to set location somehow for CC_polygon
 
         # generate world
         if self.generate_world:
