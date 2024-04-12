@@ -57,10 +57,11 @@ class WorldDrawer(droneEnv):
         self.show_world()
 
     def write_to_file(self):
-        cv2.imwrite('drawn_world.png', self.world_img)
+        name='drawn_world.png'
+        cv2.imwrite(name, self.world_img)
         np.save('drawn_world', self.world)
         # self.world=np.load('test_world.npy')
-        print('world saved to file')
+        print('world saved to file: ', name)
         self.calulcate_all_black_pixles()
 
     def calulcate_all_black_pixles(self):
