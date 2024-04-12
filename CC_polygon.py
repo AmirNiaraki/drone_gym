@@ -18,6 +18,9 @@ class Complete_Coverage():
 
 		wname = None
 
+		x = 0
+		y = 0
+
 		# if given a filename argument
 		if args.filename:
 			wname = args.filename
@@ -41,18 +44,93 @@ class Complete_Coverage():
 		if args.randomSetSize:
 			# generate random world of x, y size named 'random_world'
 			x, y = args.randomSetSize
-			WorldGenerator().run(file_name='random_world', world_y=y, world_x=x)
+			WorldGenerator().run(file_name='random_world', world_y=int(y) , world_x=int(x))
 			wname = 'random_world.npy'
 		# if set size and filename is given, set size of world and name
 		if args.randomSetSizeFilename:
 			wname, x, y = args.randomSetSizeFilename
-			WorldGenerator().run(file_name=wname, world_y=y, world_x=x)
+			WorldGenerator().run(file_name=wname, world_y=int(y), world_x=int(x))
 
 		# init environment
 		env = droneEnv(render=True, generate_world=False, wname=wname, learn=False)
 
+		# if we are setting a specific size of map, override cfg's world sizes
+		if x != 0 and y != 0:
+			env.cfg.WORLD_XS = (env.cfg.PADDING_X, int(x))
+			env.cfg.WORLD_YS = (env.cfg.PADDING_Y, int(y))
+
+		# load the world from file
+		env.world = np.load(env.world_name)
+		
+		# remove all padding and optimize the order of shapes
+		self.sanitize(env)
+
 		# run search
 		self.search(env)
+
+	# remove all padding from the list and optimize the order of shapes
+	def sanitize(self, env):
+		# Get the filename without extension
+		wname = env.world_name.rsplit(".", 1)[0]
+		# Get the list of points from the file
+		env.points = np.load(wname + "_points.npy")
+
+		# Initialize a list to store the cleaned points
+		cleaned_points = []
+
+		# Iterate over each shape in the points array
+		for shape in env.points:
+			# Find the index of the first occurrence of padding points (-1, -1) in the shape
+			first_padding_index = np.argmax(np.all(shape == (-1, -1), axis=1))
+			if first_padding_index == 0:
+				# If no padding points are found, set the index to the length of the shape
+				first_padding_index = len(shape)
+			# Remove padding points from the shape and append
+			cleaned_points.append(shape[:first_padding_index])
+
+		# Convert the list of cleaned points back to a numpy array
+		env.points = cleaned_points
+
+		# Optimize the order of shapes in the list to create the shortest path between each shape
+		env.points = self.optimizeShapes(env.points)
+
+	# optimize the order of shapes in the list to always travel to the nearest shape
+	# from the one nearest to the origin
+	def optimizeShapes(self, shapes):
+		# reordered shape list
+		reordered = []
+		visited = set()
+
+		min_dist = float('inf')
+		start = None
+
+		# find the shape closest to the origin (0,0)
+		for i, shape in enumerate(shapes):
+			dist = np.linalg.norm(np.mean(shape, axis=0))
+			if dist < min_dist:
+				min_dist = dist
+				start = i
+		
+		curr = start
+
+		# reorder the shapes starting from the closest to the origin (0, 0)
+		while len(reordered) < len(shapes):
+			reordered.append(shapes[curr])
+			visited.add(curr)
+
+			min_dist = float('inf')
+			next = None
+
+			for i, shape in enumerate(shapes):
+				if i not in visited:
+					dist = np.linalg.norm(np.mean(shapes[curr], axis=0) - np.mean(shape, axis=0))
+					if dist < min_dist:
+						min_dist = dist
+						next = i
+
+			curr = next
+
+		return reordered
 
 	def findStart(Self, list, cord):
 		return np.min(list[0][:, cord])
@@ -143,7 +221,6 @@ class Complete_Coverage():
 		# Return the lines corresponding to the found range
 		return lines[first_line], lines[last_line]
 
-
 	# check if val is within line
 	def checkValue(self, line, val, cord):
 		line_min = min(line[0][cord], line[1][cord])
@@ -169,10 +246,22 @@ class Complete_Coverage():
 		lower_x1, lower_y1 = lower[0]
 		lower_x2, lower_y2 = lower[1]
 
+		# check if the lines are vertical or horizontal
+		if upper_x1 == upper_x2 and lower_x1 == lower_x2:  # Vertical lines
+            # handle the case where both lines are vertical
+			if cord == 0:
+				return upper_x1, lower_x1
+			else:
+				return max(upper_y1, lower_y1), min(upper_y2, lower_y2)
+		elif upper_y1 == upper_y2 and lower_y1 == lower_y2:  # Horizontal lines
+            # handle the case where both lines are horizontal
+			if cord == 0:
+				return min(upper_x1, lower_x1), max(upper_x2, lower_x2)
+			else:
+				return upper_y1, lower_y1
+
 		# calc the slope (m) and intercept (b) for each line
-		print(f"m = {upper_y2}-{upper_y1}/{upper_x2}-{upper_x1}\n")
 		upper_m = (upper_y2-upper_y1)/float((upper_x2-upper_x1))
-		print(upper_m)
 		upper_b = upper_y1 - upper_m * upper_x1
 
 		lower_m = (lower_y2-lower_y1)/float((lower_x2-lower_x1))
@@ -191,25 +280,29 @@ class Complete_Coverage():
 
 			return math.ceil(upper_bound), math.ceil(lower_bound)
 
+	# find the orientation based on the x length and y length of the shape.
+    # if x < y; orientation is vertical (1). Else, orientation is horizontal (0)
 	def getOrientation(self, area_bounds):
 		if (area_bounds["maxx"] - area_bounds["minx"]) < (area_bounds["maxy"] - area_bounds["miny"]):
 			return 1
 		else:
 			return 0
 
+	# search algorithm to exhaustively search a series of shapes within an area varying by change in orientation
 	def search(self, env):
 
-		steps 	= 0
-		num_iterations = 1
-		rewards = []
+		tot_steps 	= 0
+		tot_num_iterations = 1
+		tot_rewards = []
 
 		sorted = []
+		tot_obs = []
+		tot_info = []
+		end = None
 
-		env.world = np.load(env.world_name)
-		wname = env.world_name.rsplit(".", 1)[0]
-		env.points = np.load(wname + "_points.npy")
-
+		# for each shape within the area, run a version of complete coverage to search
 		for shape in env.points:
+			# find the bounds of the shape as if it was a box
 			area_bounds = self.findMinMax(shape)
 
 			# get lines sorted by x or y ranges
@@ -224,98 +317,181 @@ class Complete_Coverage():
 			# sets start y to the first index of the sorted xsorted line list's y value
 			env.location[1] = max(self.findStart(sorted[env.orientation], 1), env.cfg.PADDING_Y)
 
-			print(f"LOCATION SET HERE: {env.location}")
+			print(env.location)
 
+			# if we have seached at least one shape, move to our next shape via step
+			# to record costs of moving between search areas
+			if end is not None:
+				self.moveToNewShape(env, end, env.location)
+
+			# if env.orientation == 1, vertical search
 			if env.orientation:
-				obs, reward, done, trunc, info = self.verticalSearch(env, sorted[env.orientation], num_iterations, rewards)
+				obs, reward, done, trunc, info, num_iterations, steps = self.verticalSearch(env, sorted[env.orientation], tot_steps, tot_num_iterations, tot_rewards)
+				# record shape's search outputs as a running total
+				tot_obs.append(obs)
+				tot_info.append(info)
+				tot_rewards.append(reward)
+				tot_num_iterations += num_iterations
+				tot_steps += steps
+			# else if env.orientation == 0, horizontal search
 			else:
-				obs, reward, done, trunc, info = self.horizontalSearch(env, sorted[env.orientation], steps, num_iterations, rewards)
-			# TODO: after shape loop, we need to connect this to the next shape somehow
+				obs, reward, done, trunc, info, num_iterations, steps = self.horizontalSearch(env, sorted[env.orientation], tot_steps, tot_num_iterations, tot_rewards)
+				# record shape's search outputs as a running total
+				tot_obs.append(obs)
+				tot_info.append(info)
+				tot_rewards.append(reward)
+				tot_num_iterations += num_iterations
+				tot_steps += steps
+			
+			# save the shape's current location
+			end = env.location
 
+			# if a search returns a done, close env
+			if done:
+				env.close()
+
+		# if all shapes have been searched, close env
 		env.close()
 
+	# computes the steps needed to move from a starting coordinate to and ending coordinate using
+	# the environment's step function to mimic a real drone moving between search areas incurring a cost
+	def moveToNewShape(self, env, start, end):
+		tot_obs = []
+		tot_info = []
+		tot_rewards = 0
+		tot_num_iterations = 0
+		tot_steps = 0
+
+        # Compute the differences in x and y coordinates
+		delta_x = end[0] - start[0]
+		delta_y = end[1] - start[1]
+
+        # Move the drone to the new shape's start location
+		while abs(env.location[0] - end[0]) > 0 or abs(env.location[1] - end[1]) > 0:
+            # Determine the movement in the x and y directions
+			action_x = max(min(delta_x, -self.visible_x * (1 - self.cfg.OVERLAP)), self.visible_x * (1 - self.cfg.OVERLAP))
+			action_y = max(min(delta_y, self.visible_y * (1 - self.cfg.OVERLAP)), -self.visible_y * (1 - self.cfg.OVERLAP))
+			action = (action_x, action_y, 0)
+
+            # Perform the movement step
+			obs, reward, done, trunc, info = self.step(action)
+			tot_obs.append(obs)
+			tot_info.append(info)
+			tot_rewards += reward
+			tot_num_iterations += 1
+			tot_steps += 1
+
+            # Update delta_x and delta_y based on the remaining distance
+			delta_x = end[0] - env.location[0]
+			delta_y = end[1] - env.location[1]
+
+			# if step returns done as true, break
+			if done:
+				break
+
+            # Break if the drone cannot move further
+			if action_x == 0 and action_y == 0:
+				break
+
+            # Break if the movement has reached the destination
+			if env.location[0] == end[0] and env.location[1] == end[1]:
+				break
+
+		# return the totals from moving from start to end
+		return tot_obs, tot_rewards, trunc, tot_info, tot_num_iterations, tot_steps
+
 	def horizontalSearch(self, env, lines, steps, num_iterations, rewards):
-		truncs = False
+		trunc = False
 		info = {}
 		
 		# left-to-right: LTR: (->) & -LTR: (<-)
 		LTR = 1
 
 		for i in range(num_iterations):
-			env.reset()
+
+			# bound[0] = lower bound (towards origin) and bound[1] = upper bound (away from origin)
+			bound = []
 
 			while True and not env.done:
 				if LTR == 1:
 					# get the bound for shape in +x direction
 					# y is static, use it to solve for intersection to find x border
-					bound, _ = self.getBounds(lines, env.location[1], env.orientation)
+					bound = self.getBounds(lines, env.location[1], env.orientation)
 
 					# while current location is within bounds
-					while abs(env.location[0] - (bound + env.cfg.WORLD_XS[0])) > 1 and not env.done:
-						obs, reward, done, truncs, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
+					while abs(env.location[0] - (bound[1] - env.cfg.PADDING_X)) > 1 and not env.done:
+						obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 						steps += 1
 						rewards.append(reward)
 
 				if LTR == -1:
 					# get the bounds for shape in -x direction
-					_, bound = self.getBounds(lines, env.location[0], env.orientation)
+					bound = self.getBounds(lines, env.location[0], env.orientation)
 
-					while abs(env.location[0] + (bound - env.cfg.WORLD_XS[0])) > 1 and not env.done:
+					while abs(env.location[0] - (bound[0] + env.cfg.PADDING_X)) > 1 and not env.done:
 						obs, reward, done, trunc, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
 						steps += 1
 						rewards.append(reward)
 
 				LTR = -LTR
+				
+				# get the bounds for y movement ("env.orientation ^ 1" will return  opposite orientation) as we are now
+				# moving vertical instead of horizontal
+				bound = self.getBounds(lines, env.location[1], env.orientation ^ 1)
 
-				# TODO: Fix this
-				if abs(env.location[1] - env.cfg.WORLD_YS[1]) > 1 and not env.done:
+				if abs(env.location[1] - bound[1]) > 1 and not env.done:
 					obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
 				else:
 					break
 
 			num_iterations += 1
 
-		return obs, reward, done, trunc, info
+		return obs, reward, done, trunc, info, num_iterations, steps
 	
 	def verticalSearch(self, env, lines, steps, num_iterations, rewards):
-		truncs = False
+		trunc = False
 		info = {}
 		
 		# Up-to-Down: UTD: (^) & -UTD: (⌄)
 		UTD = 1
 
 		for i in range(num_iterations):
-			env.reset()
+
+			# bound[0] = lower bound (towards origin) and bound[1] = upper bound (away from origin)
+			bound = []
 
 			# Vertical Movement
 			while True and not env.done:
 				if UTD == 1:
 
-					bound, _ = self.getBounds(lines, env.location[0], env.orientation)
+					bound = self.getBounds(lines, env.location[1], env.orientation)
 
-					while abs(env.location[1] - (bound + env.cfg.WORLD_YS[0])) > 1 and not env.done:
-						obs, reward, done, truncs, info = env.step([0, env.visible_y * (1 - env.cfg.OVERLAP), 0])
+					while abs(env.location[1] - (bound[0] - env.cfg.PADDING_Y)) > 1 and not env.done:
+						obs, reward, done, trunc, info = env.step([0, env.visible_y * (1 - env.cfg.OVERLAP), 0])
 						steps += 1
 						rewards.append(reward)
 
 				if UTD == -1:
+					bound = self.getBounds(lines, env.location[1], env.orientation)
 
-					_, bound = self.getBounds(lines, env.location[0], env.orientation)
-
-					while abs(env.location[1] - (bound + env.cfg.WORLD_YS[0])) > 1 and not env.done:
+					while abs(env.location[1] - (bound[1] + env.cfg.PADDING_Y)) > 1 and not env.done:
 						obs, reward, done, trunc, info = env.step([0, -env.visible_y * (1 - env.cfg.OVERLAP), 0])
 						steps += 1
 						rewards.append(reward)
 
 				UTD = -UTD
 
-			# Horizontal Movement
-			if abs(env.location[0] - env.cfg.WORLD_XS[1]) > 1 and not env.done:
-				obs, reward, done, truncs, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0, 0])
+				# Horizontal Movement
+				# get the bounds for y movement ("env.orientation ^ 1" will return  opposite orientation) as we are now
+				# moving vertical instead of horizontal
+				bound = self.getBounds(lines, env.location[0], env.orientation)
+
+				if abs(env.location[0] - bound[1]) > 1 and not env.done:
+					obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0, 0])
 
 			num_iterations += 1
 
-		return obs, reward, done, truncs, info
+		return obs, reward, done, trunc, info, num_iterations, steps
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Run complete coverage against a search area.')
