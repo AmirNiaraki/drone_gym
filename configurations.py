@@ -28,7 +28,7 @@ class Configs:
         self.DEFAULT_WIND = (0.001, 0.001)
 
         # How many steps per episode
-        self.MAX_STEPS = 1000
+        self.MAX_STEPS = 300
 
         ### DRONE CAMERA ###
 
@@ -64,8 +64,8 @@ class Configs:
 
         # Maximum allowed drone speed
         self.MAX_SPEED = 20
-        self.x_speed = 5
-        self.y_speed = 5
+        self.x_speed = 8
+        self.y_speed = 8
 
         # Percent overlap (CC only)
         # Should be in range (0,1) exclusive

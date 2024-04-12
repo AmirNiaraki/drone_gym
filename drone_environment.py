@@ -48,13 +48,13 @@ class droneEnv(gym.Env):
 
         # Coefficients
         self.move_coeff = 0.0               # scaling coefficient for movement penalty in step()
-        self.detection_coeff = 3.0          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 0.1           # scaling coefficient for exploreation reward in step()
+        self.detection_coeff = 1.0          # scaling coefficient for detection reward in step()
+        self.explore_coeff = 0.0           # scaling coefficient for exploreation reward in step()
 
         # initialize everything else with reset()
         self.reset()
 
-        # Print info
+        # Print
         print("-----ENVIRONMENT INFORMATION-----")
         print("Drone Frame Resolution: " + str(self.cfg.FRAME_H) + "," + str(self.cfg.FRAME_W))
         
@@ -87,12 +87,9 @@ class droneEnv(gym.Env):
                                int(self.cfg.FRAME_W/2  + self.location[0])]
 
             # # Crop the drone's view from the world
-            self.frame = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
-            # # Resizes that crop to the resolution of the drone (downscale)
-            # # in self.frame,  255's are empty
-            # # in self.frame, 0's are rewards
-            # self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
-            
+            # # in self.frame, 0's are empty
+            # # in self.frame, 1's are rewards
+            self.frame = self.world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
 
     # helper method
     def fetch_anomaly(self):
@@ -103,16 +100,16 @@ class droneEnv(gym.Env):
 
         Returns: score (# of black pixels)
         """
-        # sum of black pixels (0's) after resizing visible area (see update_frame())
-        score = self.cfg.FRAME_H * self.cfg.FRAME_W - np.count_nonzero(self.frame)
-    
+        # sum rewards and add penalty
+        score = np.sum(self.frame) - self.frame.shape[0] * self.frame.shape[1] * 0.01
+
         # seen anamolies = # of 1's in self.world from visible area
-        self.seen_anomalies += np.count_nonzero(self.world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]])
+        self.seen_anomalies += np.sum(self.world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]])
 
         # Remove the detected objects from the world
         # Set everything equal to 0 (empty)
         self.world[self.boundaries[0] : self.boundaries[1],
-                   self.boundaries[2] : self.boundaries[3]] = 0
+                   self.boundaries[2] : self.boundaries[3]] = np.uint(0)
         
         return score
     
@@ -133,57 +130,11 @@ class droneEnv(gym.Env):
 
     # helper method        
     def get_obs(self):
-        ###  EXPLORE FRAME | STATE VECTOR
-        # resized version of explored world
-        # area_covered = cv2.resize(self.explore_world[self.boundaries[0] : self.boundaries[1],
-        #                                              self.boundaries[2] : self.boundaries[3]],
-        #                           dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H),
-        #                           interpolation=cv2.INTER_NEAREST)
-        # area_covered = np.array(area_covered)
-        # # create normalized vector of state var
-        # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-        #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-        #                                     [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
-        #                                     [self.wind[0] / 10.0],
-        #                                     [self.wind[1] / 10.0],
-        #                                     [self.battery / 100.0]])
-        # # concat zeros to get dimensions correct
-        # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((area_covered.shape[0] - normalized_state_vector.shape[0], 1))))
-        # # create observation array=[area | state vec]
-        # obs = np.concatenate((area_covered, normalized_state_vector), axis=1)
-
-        ### EXPLORE WORLD | STATE VECTOR
-        # # resize world
-        # explore_resized = cv2.resize(self.explore_world, dsize=(10, 10), interpolation=cv2.INTER_NEAREST)
-
-        # # norm vector
-        # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-        #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-        #                                     [(self.location[2] - self.cfg.WORLD_ZS[0])/(self.cfg.WORLD_ZS[1] - self.cfg.WORLD_ZS[0])],
-        #                                     [self.wind[0] / 10.0],
-        #                                     [self.wind[1] / 10.0],
-        #                                     [self.battery / 100.0]])
-        # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((explore_resized.shape[0] - normalized_state_vector.shape[0], 1))))
-
-        # # concatenate entire explore array with the state vector
-        # obs = np.concatenate((explore_resized, normalized_state_vector), axis=1)
-
-        ## FRAME | STATE VECTOR
-        # normalized_state_vector = np.array([[(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0])],
-        #                                     [(self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])],
-        #                                     [self.wind[0] / 10.0],
-        #                                     [self.wind[1] / 10.0],
-        #                                     [self.battery / 100.0]])
-        # # concat zeros to get dimensions correct
-        # normalized_state_vector = np.concatenate((normalized_state_vector, np.zeros((self.frame.shape[0] - normalized_state_vector.shape[0], 1))))
-        # # create observation array=[area | state vec]
-        # obs = np.concatenate((self.frame // 255, normalized_state_vector), axis=1)
-
         ### NORMALIZED STATE VECTOR
         obs = np.array([(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]),
                         (self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]),
-                        self.wind[0] / 10.0,
-                        self.wind[1] / 10.0,
+                        # self.wind[0] / 10.0,
+                        # self.wind[1] / 10.0,
                         self.battery / 100.0])
 
         return obs
@@ -204,6 +155,7 @@ class droneEnv(gym.Env):
         '''
         self.action = (0,0)
         self.reward = 0
+        loc1 = [self.location[0], self.location[1]]
         
         # convert discrete action to continuous
         if action == 0:
@@ -226,7 +178,9 @@ class droneEnv(gym.Env):
             self.location[1] = max(self.location[1] + self.action[1], self.cfg.WORLD_YS[0])  
         else:
             self.location[1] = min(self.location[1] + self.action[1], self.cfg.WORLD_YS[1])
-        
+
+        # resulting location (for checking out-of-bounds penalty)
+        loc2 = [self.location[0], self.location[1]]
 
         # calculate cost of movement
         cost = self.move_cost()
@@ -236,18 +190,17 @@ class droneEnv(gym.Env):
         self.battery = max(0, self.battery - cost * battery_coeff)
 
         # calculate and apply reward
-        explore = self.explore_coeff *      self.explore()
+        # explore = self.explore_coeff *      self.explore()
+        bounds_pen = 0
+        if loc1 == loc2:
+            bounds_pen = 5
         detection = self.detection_coeff *  self.fetch_anomaly()
-        movement = self.move_coeff *        cost
-        self.reward = detection + explore - movement
+        movement_pen = self.move_coeff *        cost
+        self.reward = detection - movement_pen - bounds_pen
         ### DEBUGGING
         # print("detection: " + str(detection) + 
-        #       "\tmovement: " + str(movement) + 
-        #       "\texplore: " + str(explore) + 
-        #       "\tseen-anom: " + str(self.seen_anomalies) +
-        #       "\ttotal anom: " + str(self.total_world_anomalies))
-        # time.sleep(1)
-        ###
+        #       "\tmovement: " + str(movement_pen) + 
+        #       "\tbounds: " + str(bounds_pen)) 
 
 
 
@@ -257,12 +210,12 @@ class droneEnv(gym.Env):
         self.step_count += 1
 
         # End simulation if the battery runs out
-        if self.battery<1:
-            ###
-            # print("RAN OUT OF BATTERY")
-            ###
-            self.done = True
-            self.close()
+        # if self.battery<1:
+        #     ###
+        #     # print("RAN OUT OF BATTERY")
+        #     ###
+        #     self.done = True
+        #     self.close()
 
         # End simulation if 80% of the rewards are collected
         if self.seen_anomalies >= self.total_world_anomalies * 0.8:
@@ -278,6 +231,7 @@ class droneEnv(gym.Env):
             # print("EXCEEDED STEP COUNT")
             ###
             self.done=True
+            self.close()
          
         # render new world
         if self.render and not self.done:
@@ -475,7 +429,7 @@ class droneEnv(gym.Env):
         Returns: -
         """
         # try:
-        cv2.imshow('just fetched', self.frame)
+        # cv2.imshow('just fetched', self.frame)
 
         # change to grayscale
         _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)

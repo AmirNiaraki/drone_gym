@@ -34,10 +34,10 @@ env = droneEnv(render=False, generate_world=False)
 check_env(env)
 
 # make algorithm
-model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
+model = A2C('MlpPolicy', env, verbose = 1, tensorboard_log = logdir)
 
 # training hyperparameters
-timesteps = 10000000
+timesteps = 100000
 iterations = 1
 
 # training loop

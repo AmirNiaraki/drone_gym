@@ -2,7 +2,7 @@
 # from stable_baselines3.common.evaluation import evaluate_policy
 # from stable_baselines3.common.env_checker import check_env
 
-from stable_baselines3 import PPO, A2C
+from stable_baselines3 import PPO, A2C, DQN
 import os
 import time
 from drone_environment import droneEnv
