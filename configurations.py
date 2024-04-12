@@ -28,7 +28,7 @@ class Configs:
         self.DEFAULT_WIND = (3.5, 0.0)
 
         # How many steps per episode
-        self.MAX_STEPS = 1000
+        self.MAX_STEPS = 10000
 
         ### DRONE CAMERA ###
         # Resolution of drone camera
@@ -63,11 +63,11 @@ class Configs:
         self.FULL_BATTERY = 100.0
 
         # Maximum allowed drone speed
-        self.MAX_SPEED = 20
+        self.MAX_SPEED = 5
 
         # Percent overlap (CC only)
         # Should be in range (0,1) exclusive
-        self.OVERLAP = 0.90
+        self.OVERLAP = 0.75
 
         # Drone's drag
         self.drag_table = pd.read_csv('drag_dataset.csv', index_col=0)

@@ -48,7 +48,7 @@ class droneEnv(gym.Env):
             self.world_name = wname
         self.cfg = Configs()                # config file for environment parameters
         self.wind = self.cfg.DEFAULT_WIND   # environment wind
-        self.location = [0, 0, 0]           # location declataration. Initialization is in reset()
+        self.location = [self.cfg.PADDING_X, self.cfg.PADDING_Y, self.cfg.WORLD_ZS[1]]           # location declataration. Initialization is in reset()
 
         # Coefficients
         self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
@@ -81,17 +81,17 @@ class droneEnv(gym.Env):
 
             # take snap of the sim based on location [x,y,z]
             # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            print(f"self.location = {self.location}")
+            print(self.location)
             self.boundaries = [int(-self.visible_y / 2 + self.location[1]),
                                int( self.visible_y / 2 + self.location[1]),
                                int(-self.visible_x / 2 + self.location[0]),
                                int( self.visible_x / 2 + self.location[0])]
-            
             print(self.boundaries)
 
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
-            
+            print(crop)
+
             # Resizes that crop to the resolution of the drone (downscale)
             # in self.frame,  255's are empty
             # in self.frame, 0's are rewards
@@ -254,17 +254,24 @@ class droneEnv(gym.Env):
         self.step_count += 1
 
         # End simulation if the battery runs out
-        if self.battery<1:
+        # if self.battery<1:
             ###
-            # print("RAN OUT OF BATTERY")
+            #print("RAN OUT OF BATTERY")
+            ###
+            #self.done = True
+            #self.close()
+
+        # End simulation if 80% of the rewards are collected (if running drone learn)
+        if self.seen_anomalies >= self.total_world_anomalies * 0.8 and self.learn:
+            ###
+            print("COLLECTED 80% OF ANAMOLIES")
             ###
             self.done = True
             self.close()
-
-        # End simulation if 80% of the rewards are collected
-        if self.seen_anomalies >= self.total_world_anomalies * 0.8:
+        # end simulation if 100% of rewards are collected (if not running drone learn)
+        elif self.seen_anomalies == self.total_world_anomalies and not self.learn:
             ###
-            # print("COLLECTED 80% OF ANAMOLIES")
+            print("COLLECTED 100% OF ANAMOLIES")
             ###
             self.done = True
             self.close()
@@ -272,7 +279,7 @@ class droneEnv(gym.Env):
         # End simulation if exceeding maximum allowed steps
         if self.cfg.MAX_STEPS < self.step_count:
             ###
-            # print("EXCEEDED STEP COUNT")
+            print("EXCEEDED STEP COUNT")
             ###
             self.done=True
          
@@ -321,8 +328,7 @@ class droneEnv(gym.Env):
             self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
             self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
             self.location[2] = np.random.uniform(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])
-        else:
-            #TODO: We need to set location somehow for CC_polygon
+
 
         # generate world
         if self.generate_world:
