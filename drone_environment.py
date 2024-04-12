@@ -22,6 +22,7 @@ import threading
 # import sys
 import time
 from configurations import Configs
+from process_image import draw_lines
 
 class droneEnv(gym.Env):
     """
@@ -178,8 +179,10 @@ class droneEnv(gym.Env):
             self.location[1] = max(self.location[1] + self.action[1], self.cfg.WORLD_YS[0])  
         else:
             self.location[1] = min(self.location[1] + self.action[1], self.cfg.WORLD_YS[1])
+        # track drones path
+        self.path.append((self.location[0], self.location[1]))
 
-        # resulting location (for checking out-of-bounds penalty)
+        # resulting location
         loc2 = [self.location[0], self.location[1]]
 
         # calculate cost of movement
@@ -321,6 +324,7 @@ class droneEnv(gym.Env):
         self.action_space = Discrete(n=4, start=0)
 
         info = {}
+        self.path = []
         return observation, info
       
     def world_genertor(self):
@@ -446,7 +450,17 @@ class droneEnv(gym.Env):
         # except: 
         #     print('frame not available for render!')
         #     pass
+
+        if self.path:
+            image_with_lines = draw_lines(img, self.path)
+        else:
+            image_with_lines = img
+
+        # image_with_lines = draw_lines(img, self.path)
+        cv2.imshow('World View', image_with_lines)
         
+
+
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
             self.done=True
