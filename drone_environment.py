@@ -48,9 +48,11 @@ class droneEnv(gym.Env):
         self.orientation = True
 
         # Coefficients
-        self.move_coeff = 0.0               # scaling coefficient for movement penalty in step()
-        self.detection_coeff = 1.0          # scaling coefficient for detection reward in step()
-        self.explore_coeff = 0.0           # scaling coefficient for exploreation reward in step()
+        self.move_coeff = 0.5               # penalty for movement
+        self.detection_coeff = 1.0          # detection reward
+        self.explore_coeff = 0.0            # exploration reward
+        self.boundary_coeff = 0.0           # penalty for attempting to move out of bounds
+        self.detection_pen_coeff = 500.0      # penalty for not finding any anomalies
 
         # initialize everything else with reset()
         self.reset()
@@ -102,7 +104,7 @@ class droneEnv(gym.Env):
         Returns: score (# of black pixels)
         """
         # sum rewards and add penalty
-        score = np.sum(self.frame) - self.frame.shape[0] * self.frame.shape[1] * 0.01
+        score = np.sum(self.frame)# - self.frame.shape[0] * self.frame.shape[1] * 0.01
 
         # seen anamolies = # of 1's in self.world from visible area
         self.seen_anomalies += np.sum(self.world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]])
@@ -132,11 +134,17 @@ class droneEnv(gym.Env):
     # helper method        
     def get_obs(self):
         ### NORMALIZED STATE VECTOR
-        obs = np.array([(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]),
-                        (self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]),
-                        # self.wind[0] / 10.0,
-                        # self.wind[1] / 10.0,
-                        self.battery / 100.0])
+        # obs = np.array([(self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]),
+        #                 (self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0]),
+        #                 # self.wind[0] / 10.0,
+        #                 # self.wind[1] / 10.0,
+        #                 self.battery / 100.0])
+
+        ### AVG REWARD EDGES
+        obs = np.array([np.average(self.frame[:,0]),
+                        np.average(self.frame[:,self.frame.shape[1]-1]),
+                        np.average(self.frame[0,:]),
+                        np.average(self.frame[self.frame.shape[0]-1,:])])
 
         return obs
 
@@ -156,7 +164,7 @@ class droneEnv(gym.Env):
         '''
         self.action = (0,0)
         self.reward = 0
-        loc1 = [self.location[0], self.location[1]]
+        loc1 = [self.location[0], self.location[1]] # iniitial location
         
         # convert discrete action to continuous
         if action == 0:
@@ -192,18 +200,25 @@ class droneEnv(gym.Env):
         battery_coeff = 0.01
         self.battery = max(0, self.battery - cost * battery_coeff)
 
-        # calculate and apply reward
+        # exploration reward
         # explore = self.explore_coeff *      self.explore()
+
+        # check if moving of bounds
         bounds_pen = 0
         if loc1 == loc2:
-            bounds_pen = 5
+            bounds_pen = self.boundary_coeff
         detection = self.detection_coeff *  self.fetch_anomaly()
+        
+        # penalize if no anomalies found
+        if detection == 0:
+            detection = -1 * self.detection_pen_coeff
+        
+        # movement penalty
         movement_pen = self.move_coeff *        cost
         self.reward = detection - movement_pen - bounds_pen
         ### DEBUGGING
         # print("detection: " + str(detection) + 
-        #       "\tmovement: " + str(movement_pen) + 
-        #       "\tbounds: " + str(bounds_pen)) 
+        #       "\tmovement: " + str(movement_pen))
 
 
 
@@ -221,18 +236,19 @@ class droneEnv(gym.Env):
         #     self.close()
 
         # End simulation if 80% of the rewards are collected
-        if self.seen_anomalies >= self.total_world_anomalies * 0.8:
-            ###
-            # print("COLLECTED 80% OF ANAMOLIES")
-            ###
+        if self.seen_anomalies >= self.total_world_anomalies * 0.9:
+            ##
+            print("COLLECTED 90% OF ANAMOLIES")
+            ##
+            self.reward += 5000
             self.done = True
             self.close()
 
         # End simulation if exceeding maximum allowed steps
         if self.cfg.MAX_STEPS < self.step_count:
-            ###
-            # print("EXCEEDED STEP COUNT")
-            ###
+            ##
+            # print("EXCEEDED STEP COUNT" + str(self.cfg.MAX_STEPS) + "<" + str(self.step_count))
+            ##
             self.done=True
             self.close()
          
