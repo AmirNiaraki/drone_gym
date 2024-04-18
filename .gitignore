@@ -2,5 +2,7 @@
 **.jpg
 justB.png
 Training/Models/
+Training/Logs/
 __pycache__/
 **.pt
+
