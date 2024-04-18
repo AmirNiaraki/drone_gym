@@ -5,4 +5,4 @@ Training/Models/
 Training/Logs/
 __pycache__/
 **.pt
-
+**.pth
