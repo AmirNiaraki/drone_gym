@@ -29,19 +29,25 @@ import sys
 import time
 from configurations import Configs
 import pickle
+from random import randint
 
 
 class droneEnv(gymnasium.Env):
     
-    def __init__(self, observation_mode, action_mode,  render=False):
+    def __init__(self, observation_mode, action_mode='cont',  render=False):
         # super(droneEnv, self).__init__()
         super().__init__()
         self.cfg=Configs()       
         self.observation_mode=observation_mode
         self.action_mode=action_mode
         self.render=render
-
-        self.location=self.cfg.init_location.copy()
+        if self.cfg.random_init_location:
+            print('Random initialization')
+            self.location=[randint(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1]),
+                           randint(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1]),
+                           randint(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])]
+        else:
+            self.location=self.cfg.init_location.copy()
         self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
 
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
@@ -148,7 +154,7 @@ class droneEnv(gymnasium.Env):
 
         if self.action_mode=='cont':
             # new location is assigned and reward of movement is calculated (move_cost())
-            self.move_by_velocity()
+            step_cost=self.move_by_velocity()
         if self.action_mode=='disc':
             self.move_by_tile()
                
@@ -201,12 +207,13 @@ class droneEnv(gymnasium.Env):
         # print('step count: ', self.step_count)
         # print(' x size on world: ', self.visible_x)
         # print( 'y size on world: ', self.visible_y)
-        return observation, self.reward, self.done,  self.done, info # now needs both terminated and turncated booleans, passed done for both.
+        return observation, self.reward, self.done, self.done,  info # now needs both terminated and turncated booleans, passed done for both.
 
 
 
     def move_by_velocity(self):
         self.abs_velocity=self.action
+        prev_locations=self.location
         
         if  self.abs_velocity[0]<0:
             self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
@@ -222,8 +229,9 @@ class droneEnv(gymnasium.Env):
             self.location[2]=max(self.location[2]+ self.abs_velocity[2],self.cfg. WORLD_ZS[0])  
         else:
             self.location[2]=min(self.location[2]+ self.abs_velocity[2], self.cfg.WORLD_ZS[1])
-             
-        self.reward =- self.move_cost()
+        
+        is_stagnated=False
+        return self.move_cost(), is_stagnated
 
 
     def renderer(self):
@@ -264,8 +272,14 @@ class droneEnv(gymnasium.Env):
         self.thread=Thread(target=self.update_frame, args=(),daemon=True)
         self.thread.start()
 
-        # self.location = self.cfg.init_location
-        self.location = self.cfg.init_location.copy()
+
+        if self.cfg.random_init_location:
+            print('Random initialization')
+            self.location=[randint(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1]),
+                           randint(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1]),
+                           randint(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])]
+        else:
+            self.location=self.cfg.init_location.copy()
 
         self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -286,6 +300,7 @@ class droneEnv(gymnasium.Env):
             observation = np.array(observation , dtype=np.float64)
         info={}
         return observation, info
+    
       
     def world_genertor(self):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
