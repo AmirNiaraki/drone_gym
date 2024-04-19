@@ -48,11 +48,11 @@ class droneEnv(gym.Env):
         self.orientation = True
 
         # Coefficients
-        self.move_coeff = 0.5               # penalty for movement
-        self.detection_coeff = 1.0          # detection reward
+        self.move_coeff = 0.0               # penalty for movement
+        self.detection_coeff = 10.0          # detection reward
         self.explore_coeff = 0.0            # exploration reward
-        self.boundary_coeff = 0.0           # penalty for attempting to move out of bounds
-        self.detection_pen_coeff = 500.0      # penalty for not finding any anomalies
+        self.boundary_coeff = 100.0           # penalty for attempting to move out of bounds
+        self.detection_pen_coeff = 10.0      # penalty for not finding any anomalies
 
         # initialize everything else with reset()
         self.reset()
@@ -292,12 +292,12 @@ class droneEnv(gym.Env):
         self.battery = 100.0
 
         # random start location
-        # self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
-        # self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
+        self.location[0] = int(np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1]))
+        self.location[1] = int(np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1]))
 
         # start in top left corner
-        self.location[0] =  self.cfg.WORLD_XS[0]
-        self.location[1] =  self.cfg.WORLD_YS[0]
+        # self.location[0] =  self.cfg.WORLD_XS[0]
+        # self.location[1] =  self.cfg.WORLD_YS[0]
 
         # generate world
         if self.generate_world:

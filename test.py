@@ -9,7 +9,7 @@ from drone_environment import droneEnv
 from stable_baselines3.common.env_checker import check_env
 import sys
 
-env=droneEnv(render=True, generate_world=False)
+env=droneEnv(render=True, generate_world=True)
 check_env(env)
 # Load the trained agent
 try:
