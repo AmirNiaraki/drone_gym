@@ -2,6 +2,7 @@
 *.jpg
 *.json
 *.npy
+*.pt
 Training
 __pycache__/
 .vscode
