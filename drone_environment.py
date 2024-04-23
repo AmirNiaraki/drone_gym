@@ -104,7 +104,7 @@ class droneEnv(gym.Env):
         Returns: score (# of black pixels)
         """
         # sum rewards and add penalty
-        score = np.sum(self.frame) - self.frame.shape[0] * self.frame.shape[1] * 0.01
+        score = np.sum(self.frame)
 
         # seen anamolies = # of 1's in self.world from visible area
         self.seen_anomalies += np.sum(self.world[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]])
