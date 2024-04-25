@@ -48,11 +48,11 @@ class droneEnv(gym.Env):
         self.orientation = True
 
         # Coefficients
-        self.move_coeff = 0.0               # penalty for movement
+        self.move_coeff = 5.0               # penalty for movement
         self.detection_coeff = 10.0          # detection reward
         self.explore_coeff = 0.0            # exploration reward
         self.boundary_coeff = 0.0           # penalty for attempting to move out of bounds
-        self.detection_pen_coeff = 10.0      # penalty for not finding any anomalies
+        self.detection_pen_coeff = 500.0      # penalty for not finding any anomalies
 
         # initialize everything else with reset()
         self.reset()
@@ -144,9 +144,9 @@ class droneEnv(gym.Env):
         obs = np.array([np.average(self.frame[:,0]),
                         np.average(self.frame[:,self.frame.shape[1]-1]),
                         np.average(self.frame[0,:]),
-                        np.average(self.frame[self.frame.shape[0]-1,:]),
-                        (self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]),
-                        (self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])])
+                        np.average(self.frame[self.frame.shape[0]-1,:])])
+                        # (self.location[0] - self.cfg.WORLD_XS[0])/(self.cfg.WORLD_XS[1] - self.cfg.WORLD_XS[0]),
+                        # (self.location[1] - self.cfg.WORLD_YS[0])/(self.cfg.WORLD_YS[1] - self.cfg.WORLD_YS[0])])
 
         return obs
 
@@ -195,7 +195,7 @@ class droneEnv(gym.Env):
         # resulting location
         loc2 = [self.location[0], self.location[1]]
 
-        # calculate cost of movement
+        # calculate move cost
         cost = self.move_cost()
 
         # Subtract move_cost from reward and battery
@@ -207,15 +207,17 @@ class droneEnv(gym.Env):
         bounds_pen = 0
         if loc1 == loc2:
             bounds_pen = 5
-        detection = self.detection_coeff *  self.fetch_anomaly()
-        movement_pen = self.move_coeff *        cost
+        detection = self.detection_coeff * self.fetch_anomaly()
+        if detection == 0.0:
+            detection = -self.detection_pen_coeff
+        # movement_pen = self.move_coeff * cost
+        movement_pen = 1 * self.move_coeff
         self.reward = detection - movement_pen - bounds_pen
         ### DEBUGGING
         # print("detection: " + str(detection) + 
         #       "\tmovement: " + str(movement_pen) + 
-        #       "\tbounds: " + str(bounds_pen)) 
-
-
+        #       "\tbounds: " + str(bounds_pen))
+        ###
 
         self.total_reward += self.reward
                
@@ -231,7 +233,7 @@ class droneEnv(gym.Env):
         #     self.close()
 
         # End simulation if 80% of the rewards are collected
-        if self.seen_anomalies >= self.total_world_anomalies * 0.8:
+        if self.seen_anomalies >= self.total_world_anomalies * 0.9:
             ###
             # print("COLLECTED 80% OF ANAMOLIES")
             ###
@@ -290,7 +292,7 @@ class droneEnv(gym.Env):
         # self.location[1] = int(np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1]))
 
         # start in top left corner
-        self.location[0] =  self.cfg.WORLD_XS[0]
+        self.location[0] =  self.cfg.WORLD_XS[1]
         self.location[1] =  self.cfg.WORLD_YS[0]
 
         # generate world

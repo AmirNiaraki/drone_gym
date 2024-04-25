@@ -28,7 +28,7 @@ class Configs:
         self.DEFAULT_WIND = (0.001, 0.001)
 
         # How many steps per episode
-        self.MAX_STEPS = 500
+        self.MAX_STEPS = 650
 
         ### DRONE CAMERA ###
 
