@@ -42,8 +42,12 @@ class droneEnv(gymnasium.Env):
         self.render=render
 
         self.location=self.cfg.init_location.copy()
-        self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
 
+        if self.cfg.load_from_geotiff==True:
+            self.world=self.load_geotiff()
+        else:
+            self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
+        print(self.workd.shape)
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -228,13 +232,17 @@ class droneEnv(gymnasium.Env):
 
     def renderer(self):
         try:
-            cv2.imshow('just fetched', self.fetch_frame())
+
+            ##world_crop
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
             img=cv2.putText(img, 'step ' + str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
             img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (50,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
             img=cv2.putText(img, 'wind direction: '+ str(self.wind_angle), (50,110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
             img=cv2.putText(img, 'flight altitude: '+ str(self.location[2]), (50,140), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+            #resize such that it fits the screen maintaining the aspect ratio
+            AR=drone_crop_resized.shape[1]/drone_crop_resized.shape[0]
+            img_resized=cv2.resize(img, (int(800*AR),800))
             cv2.imshow('World view', img)
 
 
@@ -286,7 +294,14 @@ class droneEnv(gymnasium.Env):
             observation = np.array(observation , dtype=np.float64)
         info={}
         return observation, info
-      
+    def load_geotiff(self):
+        geo=cv2.imread(self.cfg.geotiff_path, cv2.IMREAD_GRAYSCALE)
+        print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
+        return geo
+
+
+
+
     def world_genertor(self):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
@@ -370,7 +385,11 @@ class droneEnv(gymnasium.Env):
  
     def renderer(self):
         try:
-            cv2.imshow('just fetched', self.fetch_frame())
+            ##drone crop
+            drone_crop=self.fetch_frame()
+            drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
+            cv2.imshow('just fetched',drone_crop_resized)
+            ##world crop
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
             img=cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
@@ -379,8 +398,10 @@ class droneEnv(gymnasium.Env):
             img=cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle,2)), (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img=cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
 
+            #resize such that it fits the screen maintaining the aspect ratio
+            AR=drone_crop_resized.shape[1]/drone_crop_resized.shape[0]
+            img_resized=cv2.resize(img, (int(800*AR),800))
             cv2.imshow('World view', img)
-
             
         except:
             print('frame not available for render!')

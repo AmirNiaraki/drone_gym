@@ -12,7 +12,7 @@ class Configs:
     def __init__(self):
         self.is_world_generated=False
         self.world_path='drawn_world.npy'
-        self.load_from_geotiff=False
+        self.load_from_geotiff=True
         self.geotiff_path='2021-7-13-padded.png'
 
         self.STATES_X=100
@@ -22,9 +22,9 @@ class Configs:
 
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
-        self.FOV_Y=45/2 #degrees for halve of the field of view verticaly
-        self.FRAME_W=70 #unit: pixels
-        self.FRAME_H=50 #unit: pixels
+        self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
+        self.FRAME_W=1280 #unit: pixels
+        self.FRAME_H=1280 #unit: pixels
 
         self.PADDING_flt = max(self.FRAME_H,self.FRAME_W)//2 #padding for the world: scalar value
         self.PADDING_flt = 150.0
@@ -55,6 +55,6 @@ class Configs:
         self.battery_inloop=False
         ### how many steps per episode
         self.MAX_STEPS=1000
-        self.sleep_time=0
+        self.sleep_time=0.1
         
 # cfg=Configs()
