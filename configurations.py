@@ -27,7 +27,7 @@ class Configs:
         self.FRAME_H=1280 #unit: pixels
 
         self.PADDING_flt = max(self.FRAME_H,self.FRAME_W)//2 #padding for the world: scalar value
-        self.PADDING_flt = 150.0
+        self.PADDING_flt =1000
         self.PADDING = int(self.PADDING_flt)
         self.init_location=[self.PADDING,self.PADDING,60.]
         self.random_init_location=True

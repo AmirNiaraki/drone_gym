@@ -45,9 +45,10 @@ class droneEnv(gymnasium.Env):
 
         if self.cfg.load_from_geotiff==True:
             self.world=self.load_geotiff()
+
         else:
             self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
-        print(self.workd.shape)
+        print(self.world.shape)
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -90,7 +91,7 @@ class droneEnv(gymnasium.Env):
         while self.done==False:
             self.visible_x=ceil(tan(radians(self.cfg.FOV_X))*2*self.location[2])
             self.visible_y=ceil(tan(radians(self.cfg.FOV_Y))*2*self.location[2])
-            self.world_img=np.uint8((1-self.world)*255)
+            self.world_img = np.uint8((1 - self.world) * 255) if not self.cfg.load_from_geotiff else self.world
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
@@ -230,31 +231,6 @@ class droneEnv(gymnasium.Env):
         self.reward =- self.move_cost()
 
 
-    def renderer(self):
-        try:
-
-            ##world_crop
-            _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
-            img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
-            img=cv2.putText(img, 'step ' + str(self.step_count), (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (50,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            img=cv2.putText(img, 'wind direction: '+ str(self.wind_angle), (50,110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            img=cv2.putText(img, 'flight altitude: '+ str(self.location[2]), (50,140), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            #resize such that it fits the screen maintaining the aspect ratio
-            AR=drone_crop_resized.shape[1]/drone_crop_resized.shape[0]
-            img_resized=cv2.resize(img, (int(800*AR),800))
-            cv2.imshow('World view', img)
-
-
-            
-        except:
-            print('frame not available to render!')
-            pass
-        
-        if cv2.waitKey(1)==ord('q'):
-            print('Q hit:')
-            self.done=True
-            self.close()        
          
          
          
@@ -386,9 +362,9 @@ class droneEnv(gymnasium.Env):
     def renderer(self):
         try:
             ##drone crop
-            drone_crop=self.fetch_frame()
-            drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
-            cv2.imshow('just fetched',drone_crop_resized)
+            # drone_crop=self.fetch_frame()
+            # drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
+            # cv2.imshow('just fetched',drone_crop_resized)
             ##world crop
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
@@ -399,9 +375,9 @@ class droneEnv(gymnasium.Env):
             img=cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
 
             #resize such that it fits the screen maintaining the aspect ratio
-            AR=drone_crop_resized.shape[1]/drone_crop_resized.shape[0]
-            img_resized=cv2.resize(img, (int(800*AR),800))
-            cv2.imshow('World view', img)
+            AR=self.world_img.shape[1]/self.world_img.shape[0]
+            img_resized=cv2.resize(img, (800,800))
+            cv2.imshow('World view', img_resized)
             
         except:
             print('frame not available for render!')
