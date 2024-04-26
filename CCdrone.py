@@ -8,7 +8,7 @@ Created on Thu Nov 10 17:50:32 2022
 The following script takes in a RECTANGULAR image and generates the complete coverage with defualt:
         1. Front overlap, 2. Side overlap, 3. Drone speed, 4. Wind field and 5. Altitude
 """
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
 import time
 import cv2
 import numpy as np

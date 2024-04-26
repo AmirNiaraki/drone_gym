@@ -7,7 +7,7 @@ white picture that is the world.
 
 import cv2
 import numpy as np
-from IPP_drone_path_planner import droneEnv
+from drone_environment import droneEnv
 
 class WorldDrawer(droneEnv):
     def __init__(self):

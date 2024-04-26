@@ -53,7 +53,7 @@ class droneEnv(gym.Env):
         
         self.name=name
         self.location=init_location
-        self.world=self.world_genertor()
+        self.world=self.world_generator()
         self.battery=FULL_BATTERY # [x,y,z,] m
         self.done=False
         self.reward=0
@@ -138,7 +138,7 @@ class droneEnv(gym.Env):
     
     def reset(self):
         self.location=init_location
-        self.world=self.world_genertor()
+        self.world=self.world_generator()
         self.battery=FULL_BATTERY # [x,y,z,] m
         self.reward=0
         self.total_reward=0
@@ -156,7 +156,7 @@ class droneEnv(gym.Env):
 
         # return self.state, reward, done, info        
 ### Auxiliary functions #######################################################        
-    def world_genertor(self, seeds=SEEDS, size=(WORLD_YS[1]+PADDING,WORLD_XS[1]+PADDING)):
+    def world_generator(self, seeds=SEEDS, size=(WORLD_YS[1]+PADDING,WORLD_XS[1]+PADDING)):
          self.world=np.zeros(size, dtype=int)
          square_corners=[]
          for s in range(0,seeds):
@@ -254,7 +254,7 @@ env=droneEnv('cont')
 #     cv2.destroyAllWindows()
 
 # exit()
-# W=env.world_genertor()
+# W=env.world_generator()
 # cv2.imwrite('withB.png', W)
 # obs=env.step([500,100,10])
 # print(obs)

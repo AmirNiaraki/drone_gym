@@ -1,5 +1,7 @@
 **.png
 **.jpg
+**.tif
 justB.png
 Training/Models/
+Training/Logs/
 __pycache__/
