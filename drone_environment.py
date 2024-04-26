@@ -42,11 +42,8 @@ class droneEnv(gymnasium.Env):
         self.render=render
 
         self.location=self.cfg.init_location.copy()
-        if self.cfg.load_from_geotiff:
-            self.world=self.load_geotiff()
-        else:
-            self.world=self.world_generator() if self.cfg.is_world_generated==True else self.load_world()
-        print('type of world:', type(self.world))
+        self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
+
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -62,8 +59,8 @@ class droneEnv(gymnasium.Env):
         if self.observation_mode=='cont':
             self.observation_space = Box(low=0, high=255,
                                     shape=(self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1), dtype=np.uint8) #NOTE: dtype has to change for non binary image
-            # self.observation_space= Box (low=-2000, high=2000,
-            #                             shape=(6,), dtype=np.float64)  
+            # self.observation_space=Box(low=-2000, high=2000,
+            #                            shape=(6,), dtype=np.float64)  
         if self.action_mode=='cont':
             self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
         if self.action_mode=='disc':
@@ -89,8 +86,7 @@ class droneEnv(gymnasium.Env):
         while self.done==False:
             self.visible_x=ceil(tan(radians(self.cfg.FOV_X))*2*self.location[2])
             self.visible_y=ceil(tan(radians(self.cfg.FOV_Y))*2*self.location[2])
-            if not self.cfg.load_from_geotiff:
-                self.world_img=np.uint8((1-self.world)*255)
+            self.world_img=np.uint8((1-self.world)*255)
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
@@ -271,7 +267,7 @@ class droneEnv(gymnasium.Env):
         # self.location = self.cfg.init_location
         self.location = self.cfg.init_location.copy()
 
-        self.world=self.world_generator() if self.cfg.is_world_generated==True else self.load_world()
+        self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
         self.total_reward=0
@@ -290,19 +286,8 @@ class droneEnv(gymnasium.Env):
             observation = np.array(observation , dtype=np.float64)
         info={}
         return observation, info
-    
-    def load_geotiff(self):
-        _w=cv2.imread(self.cfg.geotiff_path)
-        w,h,c=_w.shape
-        print(f'world loaded from geotiff with resolutution ({w},{h})')
-        # resized=cv2.resize(_w, (1000,1000))
-        # del _w
-        return _w
-
-
-
-
-    def world_generator(self):
+      
+    def world_genertor(self):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
         size=(self.cfg.WORLD_YS[1]+self.cfg.PADDING,self.cfg.WORLD_XS[1]+self.cfg.PADDING)
@@ -423,13 +408,4 @@ class droneEnv(gymnasium.Env):
         
         
         
-if __name__=='__main__':
-    env=droneEnv('cont', 'cont', render=True)
-    obs=env.reset()
-    done=False
-    while not done:
-        obs, reward, done, info=env.step(env.action)
-        print('reward:', reward)
-        time.sleep(0.1)
-    env.close()
-    print('done')
+   

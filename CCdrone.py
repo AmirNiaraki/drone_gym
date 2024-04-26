@@ -24,6 +24,7 @@ strides_y=int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
 
 step_x=20
 step_y=20
+step_z=1
 LTR=1
 steps=0
 rewards=[]
@@ -34,23 +35,24 @@ for i in range(1):
     print('Iteration: ', i, '\n supposed location: ', env.location, 'configurations: ', env.cfg.init_location)
     
     while True:
+
         if LTR==1:
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[1])>1:
-                    obs, reward, done, info =env.step([step_x,0,0])
+                    obs, reward, done, _, info =env.step([step_x,0,step_z])
                     # print(f'step: {steps}, reward: {reward}')
                     steps+=1
                     rewards.append(reward)
 
         if LTR==-1:
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[0])>1:
-                    obs, reward, done, info =env.step([step_x,0,0])
+                    obs, reward, done, _, info =env.step([step_x,0,0])
                     # print(f'step: {steps}, reward: {reward}')
                     steps+=1
                     rewards.append(reward)      
         step_x=-step_x
         LTR=-LTR
         if env.done==False and abs(env.location[1]-env.cfg.WORLD_YS[1])>1:   
-            obs, reward, done, info =env.step([0,step_y,0])
+            obs, reward, done, _,info =env.step([0,step_y,0])
             # print(f'step: {steps}, reward: {reward}')
         else: 
             break
