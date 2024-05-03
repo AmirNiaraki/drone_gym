@@ -9,7 +9,7 @@ import gymnasium as gym
 from gymnasium.spaces import Box
 import numpy as np
 # import pandas as pd
-from math import tan, radians, degrees, acos, sqrt
+from math import tan, radians, degrees, acos, sqrt, ceil
 import random
 # import os
 # from stable_baselines3 import PPO
@@ -22,13 +22,15 @@ import threading
 # import sys
 import time
 from configurations import Configs
+from world_generator import WorldGenerator
+from process_image import draw_path
 
 class droneEnv(gym.Env):
     """
     Drone Environment class, extends gym.Env 
         ... many instance variables
     """
-    def __init__(self, render=False, generate_world=True, wname=None, learn=True):
+    def __init__(self, render=False, generate_world=True, wname=None, CC=None):
         """
         Constructor.
 
@@ -39,7 +41,15 @@ class droneEnv(gym.Env):
         self.render = render
         self.generate_world = generate_world
 
-        self.learn = learn
+        self.CC = CC
+
+        #battery switch
+        self.t_bat = True
+
+        #save path switch
+        self.save_path = False
+        self.show_path = False
+        self.show_bounds = False
 
         # hardcoded
         if wname is None:
@@ -54,6 +64,8 @@ class droneEnv(gym.Env):
         self.move_coeff = 1.0               # scaling coefficient for movement penalty in step()
         self.detection_coeff = 3.0          # scaling coefficient for detection reward in step()
         self.explore_coeff = 0.01           # scaling coefficient for exploreation reward in step()
+
+        self.init = True
 
         # initialize everything else with reset()
         self.reset()
@@ -74,6 +86,8 @@ class droneEnv(gym.Env):
             self.visible_x = tan(radians(self.cfg.FOV_X)) * 2 * self.location[2]
             self.visible_y = tan(radians(self.cfg.FOV_Y)) * 2 * self.location[2]
             
+            # print(f"visible x, visible y: ({self.visible_x}, {self.visible_y})")
+
             # black/white inversion for display (not calculations)
             # in self.world, 1's are rewards. Get's converted to 0 to be displayed as black
             # in self.world, 0's are empty pixles. Get's converted to 255 to be displayed as white
@@ -81,23 +95,22 @@ class droneEnv(gym.Env):
 
             # take snap of the sim based on location [x,y,z]
             # visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
-            print(self.location)
+            # print(f"Current Location: {self.location}")
             self.boundaries = [int(-self.visible_y / 2 + self.location[1]),
                                int( self.visible_y / 2 + self.location[1]),
                                int(-self.visible_x / 2 + self.location[0]),
                                int( self.visible_x / 2 + self.location[0])]
-            print(self.boundaries)
+            
+            self.box = f"Current Boundaries: {self.boundaries[2]} < {self.location[0]} < {self.boundaries[3]} & {self.boundaries[0]} < {self.location[1]} < {self.boundaries[1]}"
 
             # Crop the drone's view from the world
             crop = self.world_img[self.boundaries[0] : self.boundaries[1], self.boundaries[2] : self.boundaries[3]]
-            print(crop)
 
             # Resizes that crop to the resolution of the drone (downscale)
             # in self.frame,  255's are empty
             # in self.frame, 0's are rewards
 
             self.frame = cv2.resize(src=crop, dsize=(self.cfg.FRAME_W, self.cfg.FRAME_H), interpolation=cv2.INTER_NEAREST)
-
     # helper method
     def fetch_anomaly(self):
         """
@@ -211,6 +224,14 @@ class droneEnv(gym.Env):
         self.action = action
         self.reward = 0
         
+        #TODO: REMOVE THIS BEFORE PUSHING
+        time.sleep(.01)
+
+        #add first point to list
+        if self.init:
+            self.path.append((ceil(self.location[0]), ceil(self.location[1])))
+            self.cfg.init = False
+
         # Move the Drone
         # x-direction
         if  self.action[0] < 0:
@@ -228,11 +249,13 @@ class droneEnv(gym.Env):
         else:
             self.location[2] = min(self.location[2] + self.action[2], self.cfg.WORLD_ZS[1])
         
+        self.path.append((ceil(self.location[0]), ceil(self.location[1])))
+
         # calculate cost of movement
         cost = self.move_cost()
 
         # Subtract move_cost from reward and battery
-        battery_coeff = 0.5
+        battery_coeff = 0.001
         self.battery = max(0, self.battery - cost * battery_coeff)
 
         # calculate and apply reward
@@ -254,26 +277,27 @@ class droneEnv(gym.Env):
         self.step_count += 1
 
         # End simulation if the battery runs out
-        # if self.battery<1:
+        if self.battery<1 and self.t_bat:
             ###
-            #print("RAN OUT OF BATTERY")
+            print("RAN OUT OF BATTERY")
             ###
-            #self.done = True
-            #self.close()
+            self.done = True
+            self.close()
 
         # End simulation if 80% of the rewards are collected (if running drone learn)
-        if self.seen_anomalies >= self.total_world_anomalies * 0.8 and self.learn:
+        if self.seen_anomalies >= self.total_world_anomalies * 0.8 and self.CC is None:
             ###
             print("COLLECTED 80% OF ANAMOLIES")
             ###
             self.done = True
             self.close()
         # end simulation if 100% of rewards are collected (if not running drone learn)
-        elif self.seen_anomalies == self.total_world_anomalies and not self.learn:
+        elif self.seen_anomalies == self.total_world_anomalies and self.CC is not None:
             ###
             print("COLLECTED 100% OF ANAMOLIES")
             ###
             self.done = True
+            # show the last frame for path printing
             self.close()
 
         # End simulation if exceeding maximum allowed steps
@@ -324,7 +348,11 @@ class droneEnv(gym.Env):
 
         # random start location if running RL
         # if not learning, CC will set this before running each shape
-        if self.learn:
+        if self.CC is not None:
+            self.location[0] = max(self.CC[0], self.cfg.PADDING_X)
+            self.location[1] = max(self.CC[1], self.cfg.PADDING_Y)
+            self.location[2] = self.cfg.WORLD_ZS[1]
+        else:
             self.location[0] = np.random.uniform(self.cfg.WORLD_XS[0], self.cfg.WORLD_XS[1])
             self.location[1] = np.random.uniform(self.cfg.WORLD_YS[0], self.cfg.WORLD_YS[1])
             self.location[2] = np.random.uniform(self.cfg.WORLD_ZS[0], self.cfg.WORLD_ZS[1])
@@ -333,14 +361,18 @@ class droneEnv(gym.Env):
         # generate world
         if self.generate_world:
             # updates self.world
-            self.world_genertor()
+            WorldGenerator.gen_world(self)
             
             # Save as numpy array and png
             # np.save('test_world', self.world)
             # cv2.imwrite("test_world.png", self.world * 255)
         else:
             # Load a saved world
-            self.world = np.load(self.world_name)
+            try:
+                self.world = np.load(self.world_name)
+            except:
+                print(f"File Not Found: No such file or directory: \'{self.world_name}\'")
+                exit(1)
         
         # generate array to describe explored pixels
         # 0 = unexplored
@@ -365,42 +397,8 @@ class droneEnv(gym.Env):
         self.action_space = Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
 
         info = {}
+        self.path = []
         return observation, info
-      
-    def world_genertor(self):
-        """
-        Generates a new world for the drone based on size and # seeds specified in configurations.py
-
-        Parameters: -
-        """
-
-        # The padded area of the world is were the drone cannot go to but may appear in the frame
-        seeds = self.cfg.SEEDS
-
-        # tuple representing dimensions of world
-        size = (self.cfg.WORLD_YS[1] + self.cfg.PADDING_Y, self.cfg.WORLD_XS[1] + self.cfg.PADDING_X)
-
-        # initialize world with zeros
-        self.world = np.zeros(size, dtype=int)
-
-        square_corners = []
-        for s in range(seeds):
-            # Corner of each square corner=[x,y] (PLACES REWARDS IN PADDING)
-            # corner=[random.randint(-self.cfg.PADDING_X, self.cfg.WORLD_XS[1]) + self.cfg.PADDING_X,
-            #         random.randint(-self.cfg.PADDING_Y, self.cfg.WORLD_YS[1]) + self.cfg.PADDING_Y]
-             
-            corner = [random.randint(0, self.cfg.WORLD_XS[1] - self.cfg.PADDING_X) + self.cfg.PADDING_X,
-                      random.randint(0, self.cfg.WORLD_YS[1] - self.cfg.PADDING_Y) + self.cfg.PADDING_Y]
-
-             # List of all square corners
-            square_corners.append(corner)
-            square_size = random.randint(self.cfg.square_size_range[0], self.cfg.square_size_range[1])
-            for i in range(square_size):
-                for j in range(square_size):
-                    try:
-                        self.world[corner[1] + j][corner[0] + i] = 1
-                    except:
-                        pass
 
     def close(self):
         """
@@ -411,6 +409,9 @@ class droneEnv(gym.Env):
         Returns: -
         """
         self.done = True
+
+        if self.save_path:
+            cv2.imwrite(self.world_name + '_path.png', self.img)
 
         # Closes active thread
         time.sleep(0.1) 
@@ -478,15 +479,23 @@ class droneEnv(gym.Env):
             # change to grayscale
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             # ???
-            img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
+            self.img = cv2.rectangle(_gray, (self.boundaries[2], self.boundaries[0]), (self.boundaries[3], self.boundaries[1]), (255, 0, 0), 3)
             # add info text
-            img = cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'step ' + str(self.step_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle, 2)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            img = cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-            cv2.imshow('World view', img)
-            
+            self.img = cv2.putText(self.img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            self.img = cv2.putText(self.img, 'step ' + str(self.step_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+            self.img = cv2.putText(self.img, 'battery: '+ str(np.round(self.battery, 2)), (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+            self.img = cv2.putText(self.img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle, 2)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+            self.img = cv2.putText(self.img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+
+            if self.points and self.show_bounds:
+                for shape in self.points:
+                    self.img = draw_path(self.img, shape, (0, 255, 0))
+
+            if self.path and self.show_path:
+                self.img = draw_path(self.img, self.path, (0, 0, 255))
+
+            cv2.imshow('World view', self.img)
+
         except:
             print('frame not available for render!')
             pass

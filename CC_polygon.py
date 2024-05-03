@@ -5,68 +5,101 @@ import math
 from world_generator import WorldGenerator
 from process_image import process
 
-#TODO: 
-	# 1. check getBounds to make sure it returns the correct value
-	# 2. Connect shapes in some manner that makes sense
-		# * get end point of current shape, find start point of next shape
-		# * then have it follow a direct line from shape 1 to shape 2
-	# 3. shapes might be defined in an unorderd manner, we need to reorder them
-	# 4. so that the travel between shapes is direct and does not pass over others
-
 class Complete_Coverage():
 	def __init__(self, args):
 
-		wname = None
+		wname, starts = None, None
+		x, y = None, None
 
-		x = 0
-		y = 0
+		# parse the flags given to setup a known world or generate one at random
+		wname, x, y = self.parseArgs(args)
 
-		# if given a filename argument
-		if args.filename:
-			wname = args.filename
-			# if that filename is not a npy array, process image w/ factor of 1
-			# TODO: Maybe make a flag that can set factor for process?
-			# or just set factor to be anything over x sized (anything over 10000x10000 gets factored?)
-			if '.npy' not in args.filename:
-				process(args.filename, 1)
-				wname = args.filename.rsplit(".", 1)[0] + ".npy"
-		# if given a filename to name a random world
-		if args.randomSetFilename:
-			# generate that file
-			WorldGenerator().run(file_name=args.randomSetFilename)
-			wname = args.randomSetFilename
-		# if given no name and request for random world
-		if args.random:
-			# generate a random world with name 'random_world'
-			WorldGenerator().run(file_name='random_world')
-			wname = 'random_world.npy'
-		# if given no filename but request certain size of random world
-		if args.randomSetSize:
-			# generate random world of x, y size named 'random_world'
-			x, y = args.randomSetSize
-			WorldGenerator().run(file_name='random_world', world_y=int(y) , world_x=int(x))
-			wname = 'random_world.npy'
-		# if set size and filename is given, set size of world and name
-		if args.randomSetSizeFilename:
-			wname, x, y = args.randomSetSizeFilename
-			WorldGenerator().run(file_name=wname, world_y=int(y), world_x=int(x))
+		# set the initial position
+		starts = self.setStart(wname)
 
 		# init environment
-		env = droneEnv(render=True, generate_world=False, wname=wname, learn=False)
+		env = droneEnv(render=True, generate_world=False, wname=wname, CC=starts)
 
 		# if we are setting a specific size of map, override cfg's world sizes
-		if x != 0 and y != 0:
+		if x is not None and y is not None:
 			env.cfg.WORLD_XS = (env.cfg.PADDING_X, int(x))
 			env.cfg.WORLD_YS = (env.cfg.PADDING_Y, int(y))
 
 		# load the world from file
 		env.world = np.load(env.world_name)
+
+		# toggle flags
+		if args.togglePath:
+			# show path of drone
+			env.show_path = True
+			# save the path as a file
+			env.save_path = True
+		if args.toggleBounds:
+			# show bounds of shape(s) of search
+			env.show_bounds = True
+		if args.toggleBattery:
+			# turn off terminating case when battery < 0 (for testing)
+			env.t_bat = False
+		if args.maxWind:
+			# set the max wind in x and y direction
+			env.cfg.DEFAULT_WIND = args.maxWind
+		if args.test:
+			# run toggles in test mode (path, bounds, battery off, and save path)
+			env.show_path = True
+			env.show_bounds = True
+			env.t_bat = False
+			env.save_path = True
 		
 		# remove all padding and optimize the order of shapes
 		self.sanitize(env)
 
 		# run search
 		self.search(env)
+
+	# Handle flag logic from command line
+	def parseArgs(self, args):
+		x = None
+		y = None
+		wname = None
+
+		# if a desired size is set
+		if args.setSize:
+			x, y = args.setSize
+			x = int(x)
+			y = int(y)
+
+		# if given a filename argument
+		if args.filename:
+			wname = args.filename
+		# if random world is requested
+		if args.random:
+			# randomly gen world with file name
+			WorldGenerator().run(file_name = wname.rsplit(".", 1)[0] if wname is not None else None, world_y=y, world_x=x)
+			# set name as random_world.npy if none is provided, else set as provided name	
+			wname = 'random_world.npy' if wname is None else (wname + ".npy" if "." not in wname else wname.rsplit(".", 1)[0] + ".npy")
+
+		# if image processing flag is present
+		if args.process:
+				# find the base filename w/o extension
+				file = wname.rsplit(".", 1) if wname is not None else None
+
+				# if file has no extension or is None, randomly generate
+				if file is None or len(file) == 1:
+					# do not attempt to load from file, randomly generate with root filename
+					wname = WorldGenerator().run(file_name=wname, world_y=y, world_x=x)
+					# reset file to the new wname given by worldGenerator
+					file = wname.rsplit(".", 1)
+
+				# process the loaded world or randomly generated world
+				wname = process(wname, 1) if file[1] != "npy" else process(file[0] + ".png", 1)
+
+		# if no flags were given, randomly generate at default size w/o processing
+		if not (args.filename or args.random or args.process):
+			WorldGenerator().run(file_name=wname, world_y=y, world_x=x)
+
+			wname = 'random_world.npy'
+
+		return wname, x, y
 
 	# remove all padding from the list and optimize the order of shapes
 	def sanitize(self, env):
@@ -132,8 +165,46 @@ class Complete_Coverage():
 
 		return reordered
 
-	def findStart(Self, list, cord):
-		return np.min(list[0][:, cord])
+	# find the optimal start point for a given shape
+	def findStart(self, lines, orient):
+
+		min_point = None
+
+		bias = orient ^ 1
+
+		# Filter out lines with (-1, -1)
+		valid_lines = [line for line in lines if not np.any(line == [-1, -1])]
+
+		# Create a generator expression to iterate over valid lines and compute necessary values
+		generator_expr = ((line[np.argmin(line[:, bias])], np.min(line[:, bias]), np.min(line[:, 1 - 1])) for line in valid_lines)
+
+		# Find the point with the minimum values (if tied, compare the other cordinates in the pairs)
+		if orient:
+			min_point = min(generator_expr, key=lambda x: (x[1], x[2], x[0][0]))
+		else:
+			min_point = min(generator_expr, key=lambda x: (x[1], x[2], x[0][1]))
+
+		# Extract the point pair from the result
+		absolute_min_point = min_point[0]
+		
+		return absolute_min_point
+	
+	def findEnd(self, shape, cord):
+		return max(shape, key=lambda point: point[cord ^ 1])
+
+	# get and set the initial start values
+	def setStart(self, wname):
+		sorted = []
+		#1. load npy array from points, reorganize to optimize search order
+		points = self.optimizeShapes(np.load(wname.rsplit(".", 1)[0] + "_points.npy"))
+		#2. get orientation for first shape of points
+		orient = self.getOrientation(self.findMinMax(points[0]))
+		#3. run self.getLines on first shape
+		sorted = self.getLines(points[0]) 
+		#4. get the starting points for the first shape
+		start = self.findStart(sorted[orient], orient)
+
+		return start
 
 	# find the bounds of the given shape in the x and y directions
 	def findMinMax(self, shape):
@@ -200,14 +271,22 @@ class Complete_Coverage():
 
 				# Search for the first occurrence on the left
 				left = mid - 1
-				while left >= curr and self.checkValue(lines[left], val, cord):
-					first_line = left
+				while left >= curr:
+					if lines[left][0][cord] == lines[left][1][cord]:
+						left -= 1
+						continue
+					if self.checkValue(lines[left], val, cord):
+						first_line = left
 					left -= 1
 
 				# Search for the last occurrence on the right
 				right = mid + 1
-				while right <= end and self.checkValue(lines[right], val, cord):
-					last_line = right
+				while right <= end:
+					if lines[right][0][cord] == lines[right][1][cord]:
+						right += 1
+						continue
+					if self.checkValue(lines[right], val, cord):
+						last_line = right
 					right += 1
 
 				# Break out of the loop since the range is found
@@ -230,14 +309,14 @@ class Complete_Coverage():
 	
 	# find the complimentary x or y coordinate along two bounding lines given an x or y constant
 	def getBounds(self, lines, val, cord):
-		# get upper and lower bound lines in respect to constant x or y given
+		upper_bound = None
+		lower_bound = None
+
 		upper, lower = self.binarySearch(lines, val, cord)
 
-		# if there aren't two lines return None (Should never happen)
+		# if there aren't two lines return Exception (error in code)
 		if upper is None or lower is None:
-			# TODO: maybe raise an exception instead of returning None as this propogates into 
-			# an unrecoverable error??
-			return None
+			raise Exception("Upper/Lower bound cannot be None type")
 
 		# find the upper/lower of both x and y for both end points in both lines
 		upper_x1, upper_y1 = upper[0]
@@ -246,39 +325,31 @@ class Complete_Coverage():
 		lower_x1, lower_y1 = lower[0]
 		lower_x2, lower_y2 = lower[1]
 
-		# check if the lines are vertical or horizontal
-		if upper_x1 == upper_x2 and lower_x1 == lower_x2:  # Vertical lines
-            # handle the case where both lines are vertical
-			if cord == 0:
-				return upper_x1, lower_x1
+		# check slope for vertical/horizontal line
+		if upper_y2 == upper_y1 or upper_x2 == upper_x1:
+			upper_bound = upper_x1 if cord else upper_y1
+
+		if lower_y2 == lower_y1 or lower_x2 == lower_x1:
+			lower_bound = lower_x1 if cord else lower_y1
+
+		if upper_bound is None:
+			upper_m = (upper_y2 - upper_y1) / float((upper_x2 - upper_x1))
+			upper_b = upper_y1 - upper_m * upper_x1
+			
+			if cord:
+				upper_bound = (val - upper_b) / upper_m
 			else:
-				return max(upper_y1, lower_y1), min(upper_y2, lower_y2)
-		elif upper_y1 == upper_y2 and lower_y1 == lower_y2:  # Horizontal lines
-            # handle the case where both lines are horizontal
-			if cord == 0:
-				return min(upper_x1, lower_x1), max(upper_x2, lower_x2)
+				upper_bound = (upper_m * val) + upper_b
+		if lower_bound is None:
+			lower_m = (lower_y2 - lower_y1) / float((lower_x2 - lower_x1))
+			lower_b = lower_y1 - (lower_m * lower_x1)
+			
+			if cord:
+				lower_bound = (val - lower_b) / lower_m
 			else:
-				return upper_y1, lower_y1
-
-		# calc the slope (m) and intercept (b) for each line
-		upper_m = (upper_y2-upper_y1)/float((upper_x2-upper_x1))
-		upper_b = upper_y1 - upper_m * upper_x1
-
-		lower_m = (lower_y2-lower_y1)/float((lower_x2-lower_x1))
-		lower_b = lower_y1 - lower_m * lower_x1
-
-		# solve for x value
-		if cord == 0:
-			upper_bound = (val - upper_b) / upper_m
-			lower_bound = (val - lower_b) / lower_m
-
-			return math.ceil(upper_bound), math.ceil(lower_bound)
-		# solve for y value
-		else:
-			upper_bound = upper_m * val + upper_b
-			lower_bound = lower_m * val + lower_b
-
-			return math.ceil(upper_bound), math.ceil(lower_bound)
+				lower_bound = (lower_m * val) + lower_b
+				
+		return math.ceil(upper_bound), math.ceil(lower_bound)
 
 	# find the orientation based on the x length and y length of the shape.
     # if x < y; orientation is vertical (1). Else, orientation is horizontal (0)
@@ -303,30 +374,31 @@ class Complete_Coverage():
 		# for each shape within the area, run a version of complete coverage to search
 		for shape in env.points:
 			# find the bounds of the shape as if it was a box
-			area_bounds = self.findMinMax(shape)
+			env.area_bounds = self.findMinMax(shape)
 
 			# get lines sorted by x or y ranges
 			# sorted[0] = sorted by x range, sorted[1] = sorted by y range
 			sorted = self.getLines(shape)
 
 			# 0 means LTR, 1 means UTD
-			env.orientation = self.getOrientation(area_bounds)
+			env.orientation = self.getOrientation(env.area_bounds)
+
+			env.end = self.findEnd(shape, env.orientation)
 
 			# sets start x to the first index of the sorted xsorted line list's x value
-			env.location[0] = max(self.findStart(sorted[env.orientation], 0), env.cfg.PADDING_X)
-			# sets start y to the first index of the sorted xsorted line list's y value
-			env.location[1] = max(self.findStart(sorted[env.orientation], 1), env.cfg.PADDING_Y)
-
-			print(env.location)
+			start = self.findStart(sorted[1], env.orientation)
 
 			# if we have seached at least one shape, move to our next shape via step
 			# to record costs of moving between search areas
 			if end is not None:
-				self.moveToNewShape(env, end, env.location)
+				self.moveToNewShape(env, start)
+			env.location[0] = max(start[0], env.cfg.PADDING_X)
+			# sets start y to the first index of the sorted xsorted line list's y value
+			env.location[1] = max(start[1], env.cfg.PADDING_Y)
 
 			# if env.orientation == 1, vertical search
 			if env.orientation:
-				obs, reward, done, trunc, info, num_iterations, steps = self.verticalSearch(env, sorted[env.orientation], tot_steps, tot_num_iterations, tot_rewards)
+				obs, reward, done, trunc, info, num_iterations, steps = self.verticalSearch(env, sorted, tot_steps, tot_num_iterations, tot_rewards)
 				# record shape's search outputs as a running total
 				tot_obs.append(obs)
 				tot_info.append(info)
@@ -335,7 +407,7 @@ class Complete_Coverage():
 				tot_steps += steps
 			# else if env.orientation == 0, horizontal search
 			else:
-				obs, reward, done, trunc, info, num_iterations, steps = self.horizontalSearch(env, sorted[env.orientation], tot_steps, tot_num_iterations, tot_rewards)
+				obs, reward, done, trunc, info, num_iterations, steps = self.horizontalSearch(env, sorted, tot_steps, tot_num_iterations, tot_rewards)
 				# record shape's search outputs as a running total
 				tot_obs.append(obs)
 				tot_info.append(info)
@@ -344,7 +416,7 @@ class Complete_Coverage():
 				tot_steps += steps
 			
 			# save the shape's current location
-			end = env.location
+			end = env.location.copy()
 
 			# if a search returns a done, close env
 			if done:
@@ -355,26 +427,33 @@ class Complete_Coverage():
 
 	# computes the steps needed to move from a starting coordinate to and ending coordinate using
 	# the environment's step function to mimic a real drone moving between search areas incurring a cost
-	def moveToNewShape(self, env, start, end):
+	def moveToNewShape(self, env, goal):
 		tot_obs = []
 		tot_info = []
 		tot_rewards = 0
 		tot_num_iterations = 0
 		tot_steps = 0
+		trunc = None
+		
+		dx = None
+		dy = None
 
-        # Compute the differences in x and y coordinates
-		delta_x = end[0] - start[0]
-		delta_y = end[1] - start[1]
+		env.cfg.WORLD_XS = (env.cfg.WORLD_XS[0], goal[0])
+		env.cfg.WORLD_YS = (env.cfg.WORLD_YS[0], goal[1])
+
+		# Compute the differences in x and y coordinates
+		dx = goal[0] - env.location[0] if goal[0] > env.location[0] else env.location[0] - goal[0]
+		dy = goal[1] - env.location[1] if goal[1] > env.location[1] else env.location[1] - goal[1]
 
         # Move the drone to the new shape's start location
-		while abs(env.location[0] - end[0]) > 0 or abs(env.location[1] - end[1]) > 0:
+		while abs(env.location[0] - goal[0]) > 0 or abs(env.location[1] - goal[1]) > 0:
             # Determine the movement in the x and y directions
-			action_x = max(min(delta_x, -self.visible_x * (1 - self.cfg.OVERLAP)), self.visible_x * (1 - self.cfg.OVERLAP))
-			action_y = max(min(delta_y, self.visible_y * (1 - self.cfg.OVERLAP)), -self.visible_y * (1 - self.cfg.OVERLAP))
+			action_x = max(min(dx, -env.visible_x * (1 - env.cfg.OVERLAP)), min(dx, env.visible_x * (1 - env.cfg.OVERLAP)))
+			action_y = max(min(dy, env.visible_y * (1 - env.cfg.OVERLAP)), min(dy, -env.visible_y * (1 - env.cfg.OVERLAP)))
 			action = (action_x, action_y, 0)
 
             # Perform the movement step
-			obs, reward, done, trunc, info = self.step(action)
+			obs, reward, done, trunc, info = env.step(action)
 			tot_obs.append(obs)
 			tot_info.append(info)
 			tot_rewards += reward
@@ -382,8 +461,8 @@ class Complete_Coverage():
 			tot_steps += 1
 
             # Update delta_x and delta_y based on the remaining distance
-			delta_x = end[0] - env.location[0]
-			delta_y = end[1] - env.location[1]
+			dx = goal[0] - env.location[0] if goal[0] > env.location[0] else env.location[0] - goal[0]
+			dy = goal[1] - env.location[1] if goal[1] > env.location[1] else env.location[1] - goal[1]
 
 			# if step returns done as true, break
 			if done:
@@ -394,7 +473,7 @@ class Complete_Coverage():
 				break
 
             # Break if the movement has reached the destination
-			if env.location[0] == end[0] and env.location[1] == end[1]:
+			if goal[0] == env.location[0] and goal[1] == env.location[1]:
 				break
 
 		# return the totals from moving from start to end
@@ -403,6 +482,9 @@ class Complete_Coverage():
 	def horizontalSearch(self, env, lines, steps, num_iterations, rewards):
 		trunc = False
 		info = {}
+		reward = 0
+		obs = None
+		done = None
 		
 		# left-to-right: LTR: (->) & -LTR: (<-)
 		LTR = 1
@@ -412,45 +494,62 @@ class Complete_Coverage():
 			# bound[0] = lower bound (towards origin) and bound[1] = upper bound (away from origin)
 			bound = []
 
-			while True and not env.done:
+			env.cfg.WORLD_XS = (env.area_bounds["minx"], env.area_bounds["maxx"])
+			env.cfg.WORLD_YS = (env.area_bounds["miny"], env.area_bounds["maxy"])
+
+			obs, reward, done, trunc, info = env.step([5, 5, 0])
+
+			while(abs(env.location[0] - env.end[0]) > 5 or abs(env.location[1] - env.end[1]) > 5) and not env.done:
 				if LTR == 1:
 					# get the bound for shape in +x direction
 					# y is static, use it to solve for intersection to find x border
-					bound = self.getBounds(lines, env.location[1], env.orientation)
+					bound = self.getBounds(lines[1], env.location[1], 1)
 
 					# while current location is within bounds
-					while abs(env.location[0] - (bound[1] - env.cfg.PADDING_X)) > 1 and not env.done:
+					while env.location[0] < max(bound) and not env.done:
+						env.cfg.WORLD_XS = (env.cfg.PADDING_X + min(bound), max(bound))
 						obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0 ,0])
 						steps += 1
 						rewards.append(reward)
 
 				if LTR == -1:
 					# get the bounds for shape in -x direction
-					bound = self.getBounds(lines, env.location[0], env.orientation)
+					bound = self.getBounds(lines[1], env.location[1], 1)
 
-					while abs(env.location[0] - (bound[0] + env.cfg.PADDING_X)) > 1 and not env.done:
+					while env.location[0] > min(bound) and not env.done:
+						env.cfg.WORLD_XS = (min(bound), env.cfg.WORLD_XS[1])
 						obs, reward, done, trunc, info = env.step([-env.visible_x  * (1 - env.cfg.OVERLAP), 0 ,0 ])
 						steps += 1
 						rewards.append(reward)
 
 				LTR = -LTR
 				
-				# get the bounds for y movement ("env.orientation ^ 1" will return  opposite orientation) as we are now
+				# get the bounds for y movement (x is static) as we are now
 				# moving vertical instead of horizontal
-				bound = self.getBounds(lines, env.location[1], env.orientation ^ 1)
+				if LTR:
+					bound = self.getBounds(lines[0], min(env.location[0], bound[1]), 0)
+				else:
+					bound = self.getBounds(lines[0], max(env.location[0], bound[1]), 0)
 
-				if abs(env.location[1] - bound[1]) > 1 and not env.done:
+				if not env.done:
+					env.cfg.WORLD_YS = (env.cfg.WORLD_YS[0] + env.area_bounds["miny"], env.area_bounds["maxy"])
 					obs, reward, done, trunc, info = env.step([0, env.visible_y  * (1 - env.cfg.OVERLAP), 0])
 				else:
 					break
 
-			num_iterations += 1
+			if env.done:
+				break
+			else:
+				num_iterations += 1
 
 		return obs, reward, done, trunc, info, num_iterations, steps
 	
 	def verticalSearch(self, env, lines, steps, num_iterations, rewards):
 		trunc = False
 		info = {}
+		reward = 0
+		obs = None
+		done = None
 		
 		# Up-to-Down: UTD: (^) & -UTD: (⌄)
 		UTD = 1
@@ -460,21 +559,28 @@ class Complete_Coverage():
 			# bound[0] = lower bound (towards origin) and bound[1] = upper bound (away from origin)
 			bound = []
 
+			env.cfg.WORLD_XS = (env.area_bounds["minx"], env.area_bounds["maxx"])
+			env.cfg.WORLD_YS = (env.area_bounds["miny"], env.area_bounds["maxy"])
+
+			obs, reward, done, trunc, info = env.step([5, 5, 0])
+
 			# Vertical Movement
-			while True and not env.done:
+			while(abs(env.location[0] - env.end[0]) > 5 or abs(env.location[1] - env.end[1]) > 5) and not env.done:
 				if UTD == 1:
 
-					bound = self.getBounds(lines, env.location[1], env.orientation)
+					bound = self.getBounds(lines[0], env.location[0], 0)
 
-					while abs(env.location[1] - (bound[0] - env.cfg.PADDING_Y)) > 1 and not env.done:
+					while env.location[1] < max(bound) and not env.done:
+						env.cfg.WORLD_YS = (env.cfg.PADDING_Y, max(bound))
 						obs, reward, done, trunc, info = env.step([0, env.visible_y * (1 - env.cfg.OVERLAP), 0])
 						steps += 1
 						rewards.append(reward)
 
 				if UTD == -1:
-					bound = self.getBounds(lines, env.location[1], env.orientation)
+					bound = self.getBounds(lines[0], env.location[0], 0)
 
-					while abs(env.location[1] - (bound[1] + env.cfg.PADDING_Y)) > 1 and not env.done:
+					while env.location[1] > min(bound) and not env.done:
+						env.cfg.WORLD_YS = (min(bound), env.cfg.WORLD_YS[1])
 						obs, reward, done, trunc, info = env.step([0, -env.visible_y * (1 - env.cfg.OVERLAP), 0])
 						steps += 1
 						rewards.append(reward)
@@ -484,24 +590,30 @@ class Complete_Coverage():
 				# Horizontal Movement
 				# get the bounds for y movement ("env.orientation ^ 1" will return  opposite orientation) as we are now
 				# moving vertical instead of horizontal
-				bound = self.getBounds(lines, env.location[0], env.orientation)
+				bound = self.getBounds(lines[1], env.location[1], 1)
 
-				if abs(env.location[0] - bound[1]) > 1 and not env.done:
+				if not env.done:
+					env.cfg.WORLD_XS = (env.cfg.WORLD_XS[0], env.area_bounds["maxx"])
 					obs, reward, done, trunc, info = env.step([env.visible_x * (1 - env.cfg.OVERLAP), 0, 0])
 
-			num_iterations += 1
+			if env.done:
+				break
+			else:
+				num_iterations += 1
 
 		return obs, reward, done, trunc, info, num_iterations, steps
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Run complete coverage against a search area.')
 	parser.add_argument('-f', '--filename', type=str, help='Specify the filename: Non-.npy files will be processed before running')
-	parser.add_argument('-fr', '--randomSetFilename', type=str, help='specify a filename to give a randomly generated world.')
 	parser.add_argument('-r', '--random', action='store_true', help='Randomly generate a world to search.')
-	parser.add_argument('-rs', '--randomSetSize', nargs=2, help='Randomly generate a world of a specified size.')
-	parser.add_argument('-frs', '--randomSetSizeFilename', nargs=3, help='Specify a filename for a randomly generate world of a set size')
-	# parser.add_argument('-w', '--wind', type=float, help='Set wind speed.')
-	# parser.add_argument('-b', '--battery', action='store_true', help='Turn off battery for testing.')
+	parser.add_argument('-s', '--setSize', nargs=2, help='Specify a size (used with random).')
+	parser.add_argument('-p', '--process', action='store_true', help='Process a file: Requires either a -f filename or -r randomly generated world')
+	parser.add_argument('-tp', '--togglePath', action='store_true', help='Show the path of the drone and output it to a file')
+	parser.add_argument('-tb', '--toggleBounds', action='store_true', help='Show the search area\'s boundaries')
+	parser.add_argument('-tbat', '--toggleBattery', action='store_true', help='Turn off battery for testing.')
+	parser.add_argument('-mw', '--maxWind', type=float, nargs=2, help='Set max wind speed (x, y) in m/s')
+	parser.add_argument('-t', '--test', action='store_true', help='sets full toggle on all options for testing')
 
 	args = parser.parse_args()
 

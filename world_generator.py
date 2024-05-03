@@ -13,6 +13,7 @@ import cv2
 import random
 from configurations import Configs
 import sys
+import os
 
 class WorldGenerator():
     def __init__(self, file_name=None, world_y=None, world_x=None):
@@ -24,24 +25,24 @@ class WorldGenerator():
             self.cfg.WORLD_XS = (self.cfg.WORLD_XS[0], world_x)
 
         if file_name is not None:
-            self.name = file_name
+            self.name = file_name.rsplit(".", 1)
         else:
-            self.name = 'world' + str(random.randint(1, 1000000))
+            self.name = 'random_world'
 
 
         # generate a new world
         WorldGenerator.gen_world(self)
 
         # save points of "shape" as numpy array
-        np.save(self.name + "_points")
+        np.save(self.name + "_points", self.points)
         # save as numpy array and png
         np.save(self.name, self.world)
         gray_scaled = (self.world * 255).astype(np.uint8)
         cv2.imwrite(self.name + ".png", gray_scaled)
         print("\nWorld saved as " + self.name + "\n")
 
-        # return the self object so we can use it if world_generator is called
-        return self.world
+        # return the name of the image created
+        return self.name + ".png"
 
     @staticmethod
     def gen_world(self):
@@ -53,13 +54,12 @@ class WorldGenerator():
         seeds = self.cfg.SEEDS
 
         # tuple representing dimensions of world
-        y = self.cfg.WORLD_YS[1] + self.cfg.PADDING_Y
-        x = self.cfg.WORLD_XS[1] + self.cfg.PADDING_X
+        y = self.cfg.WORLD_YS[1]
+        x = self.cfg.WORLD_XS[1]
 
-        size = (y, x)
+        size = (y + self.cfg.PADDING_Y, x + self.cfg.PADDING_X)
 
-        self.points = [[0, 0],[0, y],[x, y],[x, 0]]
-        print(self.points)
+        self.points = [[[self.cfg.PADDING_X, self.cfg.PADDING_Y], [self.cfg.PADDING_X, y], [x, y], [x, self.cfg.PADDING_Y], [self.cfg.PADDING_X, self.cfg.PADDING_Y]]]
 
         # initialize world with zeros
         self.world = np.zeros(size, dtype=int)
