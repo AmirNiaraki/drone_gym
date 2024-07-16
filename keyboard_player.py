@@ -35,9 +35,12 @@ def main():
             break
 
         action=keyboard_stepper(key)
-        print(action)
-
         obs, reward, done, _, info =env.step(action)
+        if action != [0,0,0]:
+            print(action)
+
+            obs, reward, done, _, info =env.step(action)
+
         time.sleep(0.1)
     
 

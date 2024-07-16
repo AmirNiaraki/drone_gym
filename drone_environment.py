@@ -65,6 +65,8 @@ class droneEnv(gymnasium.Env):
 
         else:
             self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
+        
+        print(type(self.world), self.world.shape)
             
         
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
@@ -121,6 +123,7 @@ class droneEnv(gymnasium.Env):
             # self.boundaries=[int(-self.cfg.FRAME_H/2+self.location[1]),int(self.cfg.FRAME_H/2+self.location[1]), int(-self.cfg.FRAME_W/2+self.location[0]),int(self.cfg.FRAME_W/2+self.location[0])]            
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
                              int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
 
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
@@ -151,8 +154,9 @@ class droneEnv(gymnasium.Env):
         # scor eis simply the number of black pixels
         score=self.cfg.FRAME_H*self.cfg.FRAME_W-np.sum(obs_with_no_battery/255, dtype=np.int32)
         ### removing the detected objects from the world!!!
-        self.world [int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]),
-                    int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
+        if self.cfg.remove_redetected_from_world==True:
+            self.world [int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]),
+                        int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
         return score
 
 
@@ -387,9 +391,9 @@ class droneEnv(gymnasium.Env):
     def renderer(self):
         try:
             ##drone crop
-            # drone_crop=self.fetch_frame()
-            # drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
-            # cv2.imshow('just fetched',drone_crop_resized)
+            drone_crop=self.fetch_frame()
+            drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
+            cv2.imshow('just fetched',drone_crop_resized)
             ##world crop
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
             img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)

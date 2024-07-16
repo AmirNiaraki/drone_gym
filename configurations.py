@@ -10,7 +10,7 @@ import pandas as pd
 
 class Configs:
     def __init__(self):
-        self.is_world_generated=True
+        self.is_world_generated=False
         self.world_path='drawn_world.npy'
         self.load_from_geotiff=False
         self.geotiff_path='2021-7-13-padded.png'
@@ -37,8 +37,9 @@ class Configs:
         self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
         self.WORLD_ZS=[60,100]
 
-        self.SEEDS=20
+        self.SEEDS=200
         self.square_size_range=(1,10)
+        self.remove_redetected_from_world=True
 
 
         self.FULL_BATTERY=100.

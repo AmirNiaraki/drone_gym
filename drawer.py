@@ -11,7 +11,7 @@ from drone_environment import droneEnv
 
 class WorldDrawer(droneEnv):
     def __init__(self):
-        super().__init__('cont', render=True)
+        super().__init__('cont',action_mode='cont', render=True)
         print(type(self.cfg.WORLD_YS[1]+self.cfg.PADDING), type(self.cfg.WORLD_YS[1]), type(self.cfg.PADDING))
         self.size=(int(self.cfg.WORLD_YS[1]+self.cfg.PADDING),int(self.cfg.WORLD_XS[1]+self.cfg.PADDING))
         print(type(self.cfg.PADDING))
