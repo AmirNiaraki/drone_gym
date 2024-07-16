@@ -38,12 +38,14 @@ for i in range(1):
 
         if LTR==1:
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[1])>1:
-                    obs, reward, done, _, info =env.step([step_x,0,step_z])
+                    obs, reward, done, _, info =env.step([step_x,0,0])
                     # print(f'step: {steps}, reward: {reward}')
                     steps+=1
                     rewards.append(reward)
-
-        if LTR==-1:
+        obs, reward, done, _, info =env.step([0, 0, 20])
+        obs, reward, done, _, info =env.step([0, 0, 20])
+        obs, reward, done, _, info =env.step([0, 0, 20])
+        if LTR==-1: 
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[0])>1:
                     obs, reward, done, _, info =env.step([step_x,0,0])
                     # print(f'step: {steps}, reward: {reward}')

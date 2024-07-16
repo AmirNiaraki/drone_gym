@@ -53,6 +53,6 @@ class Configs:
         self.battery_inloop=False
         ### how many steps per episode
         self.MAX_STEPS=1000
-        self.sleep_time=0.1
+        self.sleep_time=0
         
 # cfg=Configs()

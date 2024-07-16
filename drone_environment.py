@@ -303,7 +303,7 @@ class droneEnv(gymnasium.Env):
         width=int(self.cfg.wolrd_size_including_padding[0])
         size=(height, width)
         world=np.zeros(size, dtype=int)
-        logging.info('world created including the padded borders with size: ', world.shape)
+        logging.info(f'world created including the padded borders with size:{world.shape}')
         square_corners=[]
         for s in range(0,seeds):
              ### corner of each square corner=[x,y]
@@ -357,8 +357,12 @@ class droneEnv(gymnasium.Env):
     def move_cost(self):
         #finding the relative angle of wind to drone
         # print('inside move_cost() method \n actions: ', self.action[0] , self.action[1], 'winds: ', self.wind[0], self.wind[1])
-        self.wind_angle=degrees(acos((self.action[0]*self.wind[0]+self.action[1]*self.wind[1])
+        try:
+            self.wind_angle=degrees(acos((self.action[0]*self.wind[0]+self.action[1]*self.wind[1])
                                      /(sqrt(self.action[0]**2+self.action[1]**2)*sqrt(self.wind[0]**2+self.wind[1]**2))))
+        except:
+            # logging.error('wind wind angle is zero')
+            self.wind_angle=0
         #finding the relative velocity of wind to drone in absolute value
         self.relative_velocity=sqrt((self.action[0]-self.wind[0])**2+(self.action[1]-self.wind[1])**2)
         
