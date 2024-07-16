@@ -10,9 +10,9 @@ import pandas as pd
 
 class Configs:
     def __init__(self):
-        self.is_world_generated=False
+        self.is_world_generated=True
         self.world_path='drawn_world.npy'
-        self.load_from_geotiff=True
+        self.load_from_geotiff=False
         self.geotiff_path='2021-7-13-padded.png'
 
         self.STATES_X=100
@@ -26,17 +26,15 @@ class Configs:
         self.FRAME_W=1280 #unit: pixels
         self.FRAME_H=1280 #unit: pixels
 
-        self.PADDING_flt = max(self.FRAME_H,self.FRAME_W)//2 #padding for the world: scalar value
-        self.PADDING_flt =1000
-        self.PADDING = int(self.PADDING_flt)
+        self.PADDING = 100
         self.init_location=[self.PADDING,self.PADDING,60.]
-        self.random_init_location=True
+        self.random_init_location=False
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
-        self.desired_world_size=[2000,500]
-        self.WORLD_XS=[self.PADDING, self.desired_world_size[0]-self.PADDING]
-        self.WORLD_YS=[self.PADDING, self.desired_world_size[1]-self.PADDING]
+        self.wolrd_size_including_padding=[2000,500]
+        self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
+        self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
         self.WORLD_ZS=[60,100]
 
         self.SEEDS=20

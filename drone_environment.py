@@ -25,11 +25,26 @@ from threading import Thread
 import threading
 from sys import exit
 import sys
+import logging
 
 import time
 from configurations import Configs
 import pickle
 
+log_level = "INFO"
+# Logging is configured to write to droneENV.log AND to stdout
+log_format = "[%(asctime)s] [%(name)-4s] [%(filename)20s:%(lineno)-4d] [%(levelname)-8s] - %(message)s"
+logging.basicConfig(
+    format=log_format,
+    level=getattr(logging, log_level),
+    filemode="a",
+    filename="droneENV.log",
+)
+root = logging.getLogger()
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(getattr(logging, log_level))
+handler.setFormatter(logging.Formatter(log_format))
+root.addHandler(handler)
 
 class droneEnv(gymnasium.Env):
     
@@ -40,6 +55,7 @@ class droneEnv(gymnasium.Env):
         self.observation_mode=observation_mode
         self.action_mode=action_mode
         self.render=render
+        # self.world=None
 
         self.location=self.cfg.init_location.copy()
 
@@ -48,7 +64,8 @@ class droneEnv(gymnasium.Env):
 
         else:
             self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
-        print(self.world.shape)
+            
+        
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind=(3.5, 0)       
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
@@ -281,23 +298,26 @@ class droneEnv(gymnasium.Env):
     def world_genertor(self):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
-        size=(self.cfg.WORLD_YS[1]+self.cfg.PADDING,self.cfg.WORLD_XS[1]+self.cfg.PADDING)
-        self.world=np.zeros(size, dtype=int)
+        height=int(self.cfg.wolrd_size_including_padding[1])
+        width=int(self.cfg.wolrd_size_including_padding[0])
+        size=(height, width)
+        world=np.zeros(size, dtype=int)
+        logging.info('world created including the padded borders with size: ', world.shape)
         square_corners=[]
         for s in range(0,seeds):
              ### corner of each square corner=[x,y]
-             corner=[random.randint(self.cfg.PADDING,self.cfg.WORLD_XS[1]),random.randint(self.cfg.PADDING,self.cfg.WORLD_YS[1])]
+             corner=[random.randint(self.cfg.WORLD_XS[0],self.cfg.WORLD_XS[1]),random.randint(self.cfg.WORLD_YS[0],self.cfg.WORLD_YS[1])]
              ### list of all square corners
              square_corners.append(corner)
              square_size=random.randint(self.cfg.square_size_range[0],self.cfg.square_size_range[1])
              for i in range(0,square_size):
                  for j in range(0,square_size):
                      try:
-                         self.world[corner[1]+j][corner[0]+i]=1
+                         world[corner[1]+j][corner[0]+i]=1
                      except:
                          pass
                      
-        return self.world
+        return world
 
     def load_world(self):
         _w=np.load(self.cfg.world_path)
@@ -376,7 +396,9 @@ class droneEnv(gymnasium.Env):
 
             #resize such that it fits the screen maintaining the aspect ratio
             AR=self.world_img.shape[1]/self.world_img.shape[0]
-            img_resized=cv2.resize(img, (800,800))
+            long_edge=1800
+            short_edge=int(long_edge/AR)
+            img_resized=cv2.resize(img,(long_edge, short_edge))
             cv2.imshow('World view', img_resized)
             
         except:
