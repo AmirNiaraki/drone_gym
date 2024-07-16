@@ -45,6 +45,7 @@ handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(getattr(logging, log_level))
 handler.setFormatter(logging.Formatter(log_format))
 root.addHandler(handler)
+###
 
 class droneEnv(gymnasium.Env):
     
