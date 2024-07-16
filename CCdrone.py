@@ -16,7 +16,7 @@ from sys import exit
 from configurations import Configs
 
 
-# wateves
+
 env = droneEnv(observation_mode='cont', action_mode='cont', render=True)
 
 strides_x=int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
