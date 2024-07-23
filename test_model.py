@@ -7,6 +7,70 @@ from drone_environment import droneEnv
 import time
 from datetime import datetime
 
+
+# Load the trained agent
+model_path = f"Training/Models/07-22-2024-18-30-30/2000000"
+# model=PPO.load(model_path, env=env)
+# model=DQN.load(model_path, env=env)
+env = droneEnv(observation_mode='disc', action_mode='cont', render=True)
+model = A2C.load(model_path, env=env)
+
+episodes = 100
+idxs = []
+
+for ep in range(episodes):
+    obs=env.reset()
+    # idxs.append(env.idx)
+    done=False
+    # xs = []
+    # ys = []
+    while not done:
+        action, _= model.predict(obs)
+        obs, reward, done, _, info = env.step(action)
+        # x=env.x
+        # y=env.y
+        # world = env.world
+        # xs.append(x)
+        # ys.append(y)
+        # time.sleep(0.1)
+        print(reward)
+
+    # with open(f"Testing/moves_{ep}.txt", "w") as file:
+    #     # Write the first list to the file
+    #     for item in xs:
+    #         file.write(str(item) + " ")
+    #     file.write("\n")
+        
+    #     # Write the second list to the file
+    #     for item in ys:
+    #         file.write(str(item) + " ")
+    #     file.write("\n")
+
+# with open('./Testing/idx.txt', 'w') as f:
+#     for num in idxs:
+#         f.write(str(num) + '\n')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 models_dir = f"Training/Models/{int(time.time())}/"
 logdir = f"Training/Logs/{int(time.time())}/"
 
@@ -42,12 +106,7 @@ TIMESTEPS = 1000000
 iters = 1
 
 while iters<100:
+    iters += 1
     print('iteration: ', iters)
     model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"A2C")
     model.save(f"{models_dir}/{TIMESTEPS*iters}")
-    iters += 1
-	
-	
-	
-	
-	

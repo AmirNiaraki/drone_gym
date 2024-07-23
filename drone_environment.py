@@ -87,16 +87,16 @@ class droneEnv(gymnasium.Env):
             # self.observation_space=Box(low=-2000, high=2000,
             #                            shape=(6,), dtype=np.float64)  
         if self.action_mode=='cont':
-            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float16)
         if self.action_mode=='disc':
             self.action_space=Discrete(4)
         
         if self.observation_mode=='disc':
 ### action list for 2d: [0 ,1       ,2    ,3         ,4   ,5        ,6   ,7]
 ### action list for 2d: [up,up-right,right,right-down,down,down-left,left,left-top ]
-            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float64)
+            self.action_space=Box(low=-self.cfg.MAX_SPEED, high=self.cfg.MAX_SPEED, shape=(3,), dtype=np.float16)
             self.observation_space=Box(low=-2000, high=2000,
-                                       shape=(6,), dtype=np.float64)
+                                       shape=(6,), dtype=np.float16)
                    
 ### for getting the frame to the agent at all times
         time.sleep(0.01)
@@ -219,7 +219,7 @@ class droneEnv(gymnasium.Env):
             
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-            observation = np.array(observation , dtype=np.float64) 
+            observation = np.array(observation , dtype=np.float16) 
         
         if DISPLAY==True:
             self.display_info()
@@ -289,9 +289,16 @@ class droneEnv(gymnasium.Env):
             observation=observation.reshape((self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1))
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
-            observation = np.array(observation , dtype=np.float64)
+            observation = np.array(observation , dtype=np.float16)
         info={}
-        return observation, info
+
+        # for training we need two returns, why?!!!
+        # return observation, info
+    
+        #for testing we need one return, why?!!!
+        return np.array(observation, dtype=np.float16), info
+    
+
     def load_geotiff(self):
         geo=cv2.imread(self.cfg.geotiff_path, cv2.IMREAD_GRAYSCALE)
         print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')

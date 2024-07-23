@@ -8,6 +8,7 @@ white picture that is the world.
 import cv2
 import numpy as np
 from drone_environment import droneEnv
+import argparse
 
 class WorldDrawer(droneEnv):
     def __init__(self):
@@ -56,10 +57,10 @@ class WorldDrawer(droneEnv):
         self.world_img=np.uint8((1-self.world)*255)
         self.show_world()
 
-    def write_to_file(self):
-        name='drawn_world.png'
-        cv2.imwrite(name, self.world_img)
-        np.save('drawn_world', self.world)
+    def write_to_file(self, name='drawn_world'):
+        img_name=name+'.png'
+        cv2.imwrite(img_name, self.world_img)
+        np.save(name, self.world)
         # self.world=np.load('test_world.npy')
         print('world saved to file: ', name)
         self.calulcate_all_black_pixles()
@@ -71,6 +72,10 @@ class WorldDrawer(droneEnv):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--name', type=str, default='drawn_world', help='Name for the drawing')
+    args = parser.parse_args()
+
     wd = WorldDrawer()
     wd.run()
-    wd.write_to_file()
+    wd.write_to_file(args.name)

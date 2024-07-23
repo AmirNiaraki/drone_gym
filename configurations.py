@@ -11,7 +11,7 @@ import pandas as pd
 class Configs:
     def __init__(self):
         self.is_world_generated=False
-        self.world_path='drawn_world.npy'
+        self.world_path='path.npy'
         self.load_from_geotiff=False
         self.geotiff_path='2021-7-13-padded.png'
 
