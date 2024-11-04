@@ -35,10 +35,24 @@ class Configs:
         ### lets define a 1000 m * 250 m = 60 acres world
         ### lets assume the flight altitude can vary between 60 to 100 m
         ### The world generates square patches with sizes ranging between (1,10)
-        self.wolrd_size_including_padding=[2000,500]
-        self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
-        self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
-        self.WORLD_ZS=[60,100]
+
+        if self.load_from_geotiff: ### this is where we load the world from the images dimensions
+                # If we get actual image currently we cannotgo places that are not in the image
+                # also the pad is inside the image not outside and around
+                import cv2
+                img=cv2.imread(self.geotiff_path)
+                self.wolrd_size_including_padding=[img.shape[1],img.shape[0]] 
+                print('img shape:',img.shape, 'world size:',self.wolrd_size_including_padding)
+                self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
+                self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
+                self.WORLD_ZS=[20,120] # if the upper range is too large it breaks
+        else:
+                self.wolrd_size_including_padding=[2000,500]
+                self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
+                self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
+                self.WORLD_ZS=[60,100]                
+
+
 
         self.SEEDS=200
         self.square_size_range=(1,10)
