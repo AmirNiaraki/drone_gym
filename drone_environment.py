@@ -121,11 +121,11 @@ class droneEnv(gymnasium.Env):
             # print('the boundaries are not proportional with altittude!!!:')
 
             # self.boundaries=[int(-self.cfg.FRAME_H/2+self.location[1]),int(self.cfg.FRAME_H/2+self.location[1]), int(-self.cfg.FRAME_W/2+self.location[0]),int(self.cfg.FRAME_W/2+self.location[0])]            
-            self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
-                             int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
+            # self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
+            #                  int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
-
+            
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
             #         
             added_battery=self.concat_battery(resized)
@@ -301,6 +301,7 @@ class droneEnv(gymnasium.Env):
 
     def load_geotiff(self):
         geo=cv2.imread(self.cfg.geotiff_path, cv2.IMREAD_GRAYSCALE)
+
         print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
         return geo
 
@@ -363,6 +364,7 @@ class droneEnv(gymnasium.Env):
 
         battery_img=np.uint8(np.concatenate((empty_pixels, full_pixels)))
         self.output_frame=np.concatenate((input_frame, battery_img),axis=1)
+
         return self.output_frame
         
     def move_cost(self):
@@ -403,18 +405,19 @@ class droneEnv(gymnasium.Env):
             cv2.imshow('just fetched',drone_crop_resized)
             ##world crop
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
-            img=cv2.rectangle(_gray, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
-            img=cv2.putText(img, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            img=cv2.putText(img, 'step ' + str(self.step_count), (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            img=cv2.putText(img, 'battery: '+ str(np.round(self.battery, 2)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            img=cv2.putText(img, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle,2)), (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            img=cv2.putText(img, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-
+            img=_gray
             #resize such that it fits the screen maintaining the aspect ratio
             AR=self.world_img.shape[1]/self.world_img.shape[0]
-            long_edge=1800
+            long_edge=1000
             short_edge=int(long_edge/AR)
             img_resized=cv2.resize(img,(long_edge, short_edge))
+            img_resized=cv2.rectangle(img_resized, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+            img_resized=cv2.putText(img_resized, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img_resized=cv2.putText(img_resized, 'step ' + str(self.step_count), (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img_resized=cv2.putText(img_resized, 'battery: '+ str(np.round(self.battery, 2)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img_resized=cv2.putText(img_resized, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle,2)), (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            img_resized=cv2.putText(img_resized, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+
             cv2.imshow('World view', img_resized)
             
         except:

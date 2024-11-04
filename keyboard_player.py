@@ -28,6 +28,7 @@ def keyboard_stepper(key):
     return action
 
 def main():
+    i=1
     while True:
         key = cv2.waitKey(1) & 0xFF
         
@@ -35,9 +36,12 @@ def main():
             break
 
         action=keyboard_stepper(key)
-        obs, reward, done, _, info =env.step(action)
+       
+        if i==1:
+            obs, reward, done, _, info =env.step(action)
+            i=0
         if action != [0,0,0]:
-            print(action)
+            # print(action)
 
             obs, reward, done, _, info =env.step(action)
 
