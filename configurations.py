@@ -14,7 +14,7 @@ class Configs:
         self.world_path='drawn_world_1.npy'
         self.load_from_geotiff=True
         # self.geotiff_path='2021-7-13-padded.png'
-        self.geotiff_path='images/field1.tif'
+        self.geotiff_path='images/sample.png'
 
         # self.geotiff_path='justB.png'
 
@@ -26,8 +26,8 @@ class Configs:
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
-        self.FRAME_W=1280 #unit: pixels
-        self.FRAME_H=1280 #unit: pixels
+        self.FRAME_W=100 #unit: pixels
+        self.FRAME_H=100 #unit: pixels
 
         self.PADDING = 100
         self.init_location=[self.PADDING,self.PADDING,60.]
@@ -42,7 +42,7 @@ class Configs:
 
         self.SEEDS=200
         self.square_size_range=(1,10)
-        self.remove_redetected_from_world=True
+        self.remove_redetected_from_world=False
 
 
         self.FULL_BATTERY=100.

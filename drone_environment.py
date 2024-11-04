@@ -125,7 +125,7 @@ class droneEnv(gymnasium.Env):
             #                  int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
-            
+            cv2.imwrite('images/crop.png',crop)
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
             #         
             added_battery=self.concat_battery(resized)
@@ -178,7 +178,8 @@ class droneEnv(gymnasium.Env):
             self.move_by_velocity()
         if self.action_mode=='disc':
             self.move_by_tile()
-               
+        info={self.location[0],self.location[1],self.location[2]}
+       
         if self.battery<1:
              self.reward-=10
              self.done=True
@@ -206,7 +207,6 @@ class droneEnv(gymnasium.Env):
         #     print('Total rewards is:', self.total_reward)
         
         self.reward = float(self.reward)
-        info={}
         
 ### defining observation
         if self.observation_mode=='cont':
@@ -302,9 +302,20 @@ class droneEnv(gymnasium.Env):
     def load_geotiff(self):
         geo=cv2.imread(self.cfg.geotiff_path, cv2.IMREAD_GRAYSCALE)
 
+
         print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
         return geo
 
+    def padd_based_on_resolution(self, img):
+        '''
+        This method is going to padd all four edges of the image such that the maximum
+        elevation will never cause the drone view to attmept to look outside the image
+        '''
+        pass
+
+
+    def find_visible_boundaries(self,location):
+        pass
 
 
 
@@ -401,17 +412,21 @@ class droneEnv(gymnasium.Env):
         try:
             ##drone crop
             drone_crop=self.fetch_frame()
-            drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
-            cv2.imshow('just fetched',drone_crop_resized)
+            # drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
+            cv2.imshow('just fetched',drone_crop)
             ##world crop
             _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
+            
             img=_gray
+            img=cv2.rectangle(img, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+
             #resize such that it fits the screen maintaining the aspect ratio
             AR=self.world_img.shape[1]/self.world_img.shape[0]
             long_edge=1000
             short_edge=int(long_edge/AR)
             img_resized=cv2.resize(img,(long_edge, short_edge))
-            img_resized=cv2.rectangle(img_resized, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+
+            ### adding text 
             img_resized=cv2.putText(img_resized, 'East WIND: '+ str(np.round(-self.wind[0],2)) +' North WIND:'+ str(np.round(self.wind[1],2)) , (10,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img_resized=cv2.putText(img_resized, 'step ' + str(self.step_count), (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img_resized=cv2.putText(img_resized, 'battery: '+ str(np.round(self.battery, 2)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)

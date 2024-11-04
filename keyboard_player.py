@@ -39,12 +39,13 @@ def main():
        
         if i==1:
             obs, reward, done, _, info =env.step(action)
+            print(info)
             i=0
         if action != [0,0,0]:
             # print(action)
 
             obs, reward, done, _, info =env.step(action)
-
+            print(info)
         time.sleep(0.1)
     
 
