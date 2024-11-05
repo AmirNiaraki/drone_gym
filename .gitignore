@@ -4,6 +4,8 @@
 justB.png
 Training/Models/
 Training/Logs/
+images/
+myenv/
 __pycache__/
 **.pt
 **.pth
