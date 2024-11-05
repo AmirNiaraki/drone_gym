@@ -105,21 +105,11 @@ class RegressionModel(nn.Module):
 
 
 class ClassificationModel(nn.Module):
-    def __init__(
-            self,
-            num_features_in,
-            num_anchors=9,
-            num_classes=80,
-            features_out=2048,
-            feature_size=256,
-            supervised=True,
-    ):
+    def __init__(self, num_features_in, num_anchors=9, num_classes=80, prior=0.01, feature_size=256):
         super(ClassificationModel, self).__init__()
 
-        self.supervised = supervised
         self.num_classes = num_classes
         self.num_anchors = num_anchors
-        self.features_out = features_out
 
         self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
         self.act1 = nn.ReLU()
@@ -136,12 +126,6 @@ class ClassificationModel(nn.Module):
         self.output = nn.Conv2d(feature_size, num_anchors * num_classes, kernel_size=3, padding=1)
         self.output_act = nn.Sigmoid()
 
-        # # for representation
-        # self.output_rep = nn.Conv2d(
-        #     feature_size, num_anchors * self.features_out, kernel_size=3, padding=1
-        # )
-        # self.act_rep = nn.ReLU()
-
     def forward(self, x):
         out = self.conv1(x)
         out = self.act1(out)
@@ -155,31 +139,21 @@ class ClassificationModel(nn.Module):
         out = self.conv4(out)
         out = self.act4(out)
 
-        # if self.supervised:
-        out1 = self.output(out)
-        out1 = self.output_act(out1)
+        out = self.output(out)
+        out = self.output_act(out)
 
         # out is B x C x W x H, with C = n_classes + n_anchors
-        out1 = out1.permute(0, 2, 3, 1)
-        batch_size, width, height, _ = out1.shape
+        out1 = out.permute(0, 2, 3, 1)
+
+        batch_size, width, height, channels = out1.shape
 
         out2 = out1.view(batch_size, width, height, self.num_anchors, self.num_classes)
+
         return out2.contiguous().view(x.shape[0], -1, self.num_classes)
-
-        # else:
-        #     # changed these layers to fix classification and regression
-        #     out = self.output_rep(out)
-        #     out = self.act_rep(out)
-
-        #     # out is B x C x W x H, with C = n_classes + n_anchors
-        #     out1 = out.permute(0, 2, 3, 1)
-        #     batch_size, width, height, _ = out1.shape
-
-        #     out2 = out1.view(batch_size, width, height, self.num_anchors, self.features_out)
-        #     return out2.contiguous().view(x.shape[0], -1, self.features_out)
 
 
 class ResNet(nn.Module):
+
     def __init__(self, num_classes, block, layers):
         self.inplanes = 64
         super(ResNet, self).__init__()
@@ -276,6 +250,7 @@ class ResNet(nn.Module):
         regression = torch.cat([self.regressionModel(feature) for feature in features], dim=1)
 
         classification = torch.cat([self.classificationModel(feature) for feature in features], dim=1)
+
         anchors = self.anchors(img_batch)
 
         if self.training:
@@ -320,6 +295,7 @@ class ResNet(nn.Module):
                 finalAnchorBoxesCoordinates = torch.cat((finalAnchorBoxesCoordinates, anchorBoxes[anchors_nms_idx]))
 
             return [finalScores, finalAnchorBoxesIndexes, finalAnchorBoxesCoordinates]
+
 
 
 def resnet18(num_classes, pretrained=False, **kwargs):
