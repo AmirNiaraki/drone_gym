@@ -125,8 +125,9 @@ class droneEnv(gymnasium.Env):
             #                  int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
             
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
-            cv2.imwrite('images/crop.png',crop)
-            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))    
+            # cv2.imwrite('images/crop.png',crop)
+            # print('wrote images/crop.png for sanity check')
+            resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))  
             #         
             added_battery=self.concat_battery(resized)
 
@@ -214,9 +215,6 @@ class droneEnv(gymnasium.Env):
             observation=self.fetch_frame()
             observation=np.array(observation, dtype=np.uint8)
             observation=observation.reshape((self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1))
-
-
-            
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
             observation = np.array(observation , dtype=np.float16) 
@@ -301,8 +299,6 @@ class droneEnv(gymnasium.Env):
 
     def load_geotiff(self):
         geo=cv2.imread(self.cfg.geotiff_path, cv2.IMREAD_GRAYSCALE)
-
-
         print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
         return geo
 
@@ -453,12 +449,10 @@ class droneEnv(gymnasium.Env):
         # print('current wind angle: ', self.wind_angle)
         # print('relative velocity: ', self.relative_velocity)
         print('step:', self.step_count, ' reward: ', self.reward)
-        print('\n total reward: ', self.total_reward)
-
-        
+        print('\n total reward: ', self.total_reward)        
         print('========= \n')
 
-        
+         
         
         
    

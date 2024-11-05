@@ -70,7 +70,7 @@ class Configs:
         self.drag_table=pd.read_csv('drag_dataset.csv', index_col=0)
         self.battery_inloop=False
         ### how many steps per episode
-        self.MAX_STEPS=1000
+        self.MAX_STEPS=1000000
         self.sleep_time=0
         
 # cfg=Configs()

@@ -31,20 +31,20 @@ rewards=[]
 
 for i in range(1):
     # env.close()
-    som_obs=env.reset()
+    # som_obs=env.reset()
     print('Iteration: ', i, '\n supposed location: ', env.location, 'configurations: ', env.cfg.init_location)
-    
     while True:
-
+        
         if LTR==1:
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[1])>1:
                     obs, reward, done, _, info =env.step([step_x,0,0])
-                    # print(f'step: {steps}, reward: {reward}')
+
                     steps+=1
                     rewards.append(reward)
-        obs, reward, done, _, info =env.step([0, 0, 20])
-        obs, reward, done, _, info =env.step([0, 0, 20])
-        obs, reward, done, _, info =env.step([0, 0, 20])
+                    # time.sleep(0.1)
+        # obs, reward, done, _, info =env.step([0, 0, 20])
+        # obs, reward, done, _, info =env.step([0, 0, 20])
+        # obs, reward, done, _, info =env.step([0, 0, 20])
         if LTR==-1: 
             while env.done==False and abs(env.location[0]-env.cfg.WORLD_XS[0])>1:
                     obs, reward, done, _, info =env.step([step_x,0,0])
