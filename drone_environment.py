@@ -49,13 +49,17 @@ root.addHandler(handler)
 
 class droneEnv(gymnasium.Env):
     
-    def __init__(self, observation_mode, action_mode,  render=False):
+    def __init__(self, observation_mode, action_mode,  render=False, img_path='images/sample2.png'):
         # super(droneEnv, self).__init__()
         super().__init__()
         self.cfg=Configs()       
         self.observation_mode=observation_mode
         self.action_mode=action_mode
         self.render=render
+        
+        self.image_path=img_path if img_path != None else self.cfg.geotiff_path
+        logging.info(f'image path: {self.image_path}')
+
         # self.world=None
 
         self.location=self.cfg.init_location.copy()
@@ -298,7 +302,7 @@ class droneEnv(gymnasium.Env):
     
 
     def load_geotiff(self):
-        geo=cv2.imread(self.cfg.geotiff_path, cv2.IMREAD_GRAYSCALE)
+        geo=cv2.imread(self.image_path, cv2.IMREAD_GRAYSCALE)
         print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
         return geo
 
