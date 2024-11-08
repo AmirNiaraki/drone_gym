@@ -28,15 +28,18 @@ class CompleteCoverageNavigator(Navigator):
                         obs, reward, done, _, info = self.env.step([self.step_x, 0, 0])
                         self.steps += 1
                         self.rewards.append(reward)
+                        yield obs
                 if self.LTR == -1:
                     while self.env.done == False and abs(self.env.location[0] - self.env.cfg.WORLD_XS[0]) > 1:
                         obs, reward, done, _, info = self.env.step([self.step_x, 0, 0])
                         self.steps += 1
                         self.rewards.append(reward)
+                        yield obs
                 self.step_x = -self.step_x
                 self.LTR = -self.LTR
                 if self.env.done == False and abs(self.env.location[1] - self.env.cfg.WORLD_YS[1]) > 1:
                     obs, reward, done, _, info = self.env.step([0, self.step_y, 0])
+                    yield obs
                 else:
                     break
             print(f'length of rewards: {len(self.rewards)}', f'number of steps: {self.steps}', 'total rewards: ', sum(self.rewards))
@@ -74,7 +77,9 @@ class KeyboardNavigator(Navigator):
                 obs, reward, done, _, info = self.env.step(action)
                 print('locations', info)
                 i = 0
+                yield obs
             if action != [0, 0, 0]:
                 obs, reward, done, _, info = self.env.step(action)
                 print(info)
+                yield obs
         self.env.close()

@@ -10,8 +10,8 @@ import pandas as pd
 
 class Configs:
     def __init__(self):
-        self.is_world_generated=True
-        self.load_from_geotiff=False
+        self.is_world_generated=False
+        self.load_from_geotiff=True
         self.world_path='drawn_world_1.npy'
         # self.geotiff_path='2021-7-13-padded.png'
         self.geotiff_path='images/sample.png'
@@ -42,7 +42,7 @@ class Configs:
                 import cv2
                 img=cv2.imread(self.geotiff_path)
                 self.wolrd_size_including_padding=[img.shape[1],img.shape[0]] 
-                print('img shape:',img.shape, 'world size:',self.wolrd_size_including_padding)
+                # print('img shape:',img.shape, 'world size:',self.wolrd_size_including_padding)
                 self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
                 self.WORLD_ZS=[20,120] # if the upper range is too large it breaks
