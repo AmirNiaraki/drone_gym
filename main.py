@@ -28,7 +28,6 @@ def parse_args():
 def main(image_path, navigator_type):
     logging.info(f"Using image: {image_path}")
     logging.info(f"Using navigator: {navigator_type}")
-    print(image_path)
     env = initialize_env(image_path)
     
     if navigator_type == 'complete':

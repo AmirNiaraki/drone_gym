@@ -319,7 +319,7 @@ class droneEnv(gymnasium.Env):
 
 
 
-    def world_genertor(self):
+    def world_genertor(self, write_to_file=True):
         ### the padded area of the world is were the drone cannot go to but may appear in the frame
         seeds=self.cfg.SEEDS
         height=int(self.cfg.wolrd_size_including_padding[1])
@@ -340,7 +340,16 @@ class droneEnv(gymnasium.Env):
                          world[corner[1]+j][corner[0]+i]=1
                      except:
                          pass
-                     
+                       
+        world_img = np.uint8((1 - world) * 255)
+        try:
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            filename = f"images/world_{timestamp}_seed{seeds}.png"
+            cv2.imwrite(filename, world_img)
+            logging.info(f'World image saved as {filename}')
+        except Exception as e:
+            logging.error(f'Failed to save world image: {e}')
+ 
         return world
 
     def load_world(self):
