@@ -66,11 +66,10 @@ class droneEnv(gymnasium.Env):
 
         if self.cfg.load_from_geotiff==True:
             self.world=self.load_geotiff()
-
         else:
-            self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
+            self.world=self.world_genertor()
         
-        print(type(self.world), self.world.shape)
+        # print(type(self.world), self.world.shape)
             
         
 ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
@@ -112,30 +111,23 @@ class droneEnv(gymnasium.Env):
     def update_frame (self):
         self.imager_thread_name=threading.current_thread()
         print('top of the thread')
+        self.world_img = self.world
         while self.done==False:
             self.visible_x=ceil(tan(radians(self.cfg.FOV_X))*2*self.location[2])
             self.visible_y=ceil(tan(radians(self.cfg.FOV_Y))*2*self.location[2])
-            self.world_img = np.uint8((1 - self.world) * 255) if not self.cfg.load_from_geotiff else self.world
+            # self.world_img = np.uint8((1 - self.world) * 255) if not self.cfg.load_from_geotiff else self.world
             ### take snap of the sim based on location [x,y,z]
             ### visible corners of FOV in the form boundaries= [y,y+frame_h,x,x+frame_w]
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
                              int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
 
-            # !!!! Sanity Check:!!!!
-            # print('the boundaries are not proportional with altittude!!!:')
-
-            # self.boundaries=[int(-self.cfg.FRAME_H/2+self.location[1]),int(self.cfg.FRAME_H/2+self.location[1]), int(-self.cfg.FRAME_W/2+self.location[0]),int(self.cfg.FRAME_W/2+self.location[0])]            
-            # self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
-            #                  int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
-            
+          
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
             # cv2.imwrite('images/crop.png',crop)
             # print('wrote images/crop.png for sanity check')
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))  
-            #         
-            added_battery=self.concat_battery(resized)
 
-            self.frame=added_battery
+            self.frame=resized
             
             if self.done==True:
                 # print('done is true instide update_frame() trying to join')
@@ -163,9 +155,6 @@ class droneEnv(gymnasium.Env):
             self.world [int(-self.visible_y/2+self.location[1]):int(self.visible_y/2+self.location[1]),
                         int(-self.visible_x/2+self.location[0]):int(self.visible_x/2+self.location[0])]=0
         return score
-
-
-
 
         
     def step(self, action, DISPLAY=False):
@@ -218,7 +207,7 @@ class droneEnv(gymnasium.Env):
             #making sure the image values are normalized
             observation=self.fetch_frame()
             observation=np.array(observation, dtype=np.uint8)
-            observation=observation.reshape((self.cfg.FRAME_H, self.cfg.FRAME_W+1, 1))
+            observation=observation.reshape((self.cfg.FRAME_H, self.cfg.FRAME_W, 3))
         else:
             observation=[self.location[0], self.location[1], self.location[2], self.battery, self.wind[0], self.wind[1]]
             observation = np.array(observation , dtype=np.float16) 
@@ -275,7 +264,7 @@ class droneEnv(gymnasium.Env):
         # self.location = self.cfg.init_location
         self.location = self.cfg.init_location.copy()
 
-        self.world=self.world_genertor() if self.cfg.is_world_generated==True else self.load_world()
+        self.world=self.world_genertor() if not self.cfg.load_from_geotiff else self.load_from_geotiff()
         self.battery=self.cfg.FULL_BATTERY # [x,y,z,] m
         self.reward=0
         self.total_reward=0
@@ -302,8 +291,8 @@ class droneEnv(gymnasium.Env):
     
 
     def load_geotiff(self):
-        geo=cv2.imread(self.image_path, cv2.IMREAD_GRAYSCALE)
-        print(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
+        geo=cv2.imread(self.image_path)
+        logging.info(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
         return geo
 
     def padd_based_on_resolution(self, img):
@@ -351,12 +340,6 @@ class droneEnv(gymnasium.Env):
             logging.error(f'Failed to save world image: {e}')
  
         return world
-
-    def load_world(self):
-        _w=np.load(self.cfg.world_path)
-        print('world loaded from file')
-        return _w
-
 
     def loc_from_state(self):
         state_x_size=(self.cfg.WORLD_XS[1]-self.cfg.WORLD_XS[0])/self.cfg.STATES_X
@@ -421,13 +404,12 @@ class droneEnv(gymnasium.Env):
         try:
             ##drone crop
             drone_crop=self.fetch_frame()
+
             # drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
             cv2.imshow('just fetched',drone_crop)
             ##world crop
-            _gray = cv2.cvtColor(self.world_img, cv2.COLOR_GRAY2BGR)
-            
-            img=_gray
-            img=cv2.rectangle(img, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),3)
+            img=self.world_img.copy()
+            img=cv2.rectangle(img, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),5)
 
             #resize such that it fits the screen maintaining the aspect ratio
             AR=self.world_img.shape[1]/self.world_img.shape[0]
@@ -441,18 +423,16 @@ class droneEnv(gymnasium.Env):
             img_resized=cv2.putText(img_resized, 'battery: '+ str(np.round(self.battery, 2)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img_resized=cv2.putText(img_resized, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle,2)), (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img_resized=cv2.putText(img_resized, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-
+            cv2.imwrite('images/world_resized.png', img_resized)
             cv2.imshow('World view', img_resized)
             
-        except:
-            print('frame not available for render!')
-            pass
+        except Exception as e:
+            logging.info(f'Frame not available for render! with error {e}')
         
         if cv2.waitKey(1)==ord('q'):
             print('Q hit:')
             self.done=True
             self.close()        
-         
 
     def display_info(self):
         print('==== INFO ==== \n')
@@ -464,7 +444,15 @@ class droneEnv(gymnasium.Env):
         print('step:', self.step_count, ' reward: ', self.reward)
         print('\n total reward: ', self.total_reward)        
         print('========= \n')
-
+    
+    def _find_visible_boundaries(location):        
+        '''
+        This method is used to find the visible boundaries of the drone view based on the location
+        of the drone and the field of view of the camera.
+        This method is meant to be accessible outside the class.
+        '''
+        pass
+        
          
         
         

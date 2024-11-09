@@ -7,16 +7,14 @@ Created on Tue Nov 22 10:10:45 2022
 
 import numpy as np
 import pandas as pd
+from math import tan, radians, ceil
 
 class Configs:
+
     def __init__(self):
-        self.is_world_generated=False
-        self.load_from_geotiff=True
-        self.world_path='drawn_world_1.npy'
+        self.load_from_geotiff=True # if false then the world is generated with random seeds
         # self.geotiff_path='2021-7-13-padded.png'
         self.geotiff_path='images/sample.png'
-
-        # self.geotiff_path='justB.png'
 
         self.STATES_X=100
         self.STATES_Y=100
@@ -24,36 +22,32 @@ class Configs:
         self.init_state=[1,1,1]
 
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
+# basicaly frame H/W ~ Tan(FOV_Y)/Tan(FOV_X) 
+        self.min_flight_height=100
+        self.max_flight_height=400
+
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
         self.FRAME_W=100 #unit: pixels
         self.FRAME_H=100 #unit: pixels
-
-        self.PADDING = 100
-        self.init_location=[self.PADDING,self.PADDING,60.]
+        self.PADDING = self.calculate_padding(max(self.FOV_X,self.FOV_Y), self.max_flight_height)
+        self.init_location=[self.PADDING,self.PADDING,self.min_flight_height]
         self.random_init_location=False
-        ### lets define a 1000 m * 250 m = 60 acres world
-        ### lets assume the flight altitude can vary between 60 to 100 m
-        ### The world generates square patches with sizes ranging between (1,10)
-
+        
         if self.load_from_geotiff: ### this is where we load the world from the images dimensions
-                # If we get actual image currently we cannotgo places that are not in the image
-                # also the pad is inside the image not outside and around
                 import cv2
                 img=cv2.imread(self.geotiff_path)
                 self.wolrd_size_including_padding=[img.shape[1],img.shape[0]] 
                 # print('img shape:',img.shape, 'world size:',self.wolrd_size_including_padding)
                 self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
-                self.WORLD_ZS=[20,120] # if the upper range is too large it breaks
-        else:
+                self.WORLD_ZS=[self.min_flight_height,self.max_flight_height]
+        else: # determine wold size HERE
                 self.wolrd_size_including_padding=[2000,500]
                 self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
-                self.WORLD_ZS=[60,100]                
-
-
-
+                self.WORLD_ZS=[self.min_flight_height,self.max_flight_height]
+        
         self.SEEDS=20
         self.square_size_range=(1,10)
         self.remove_redetected_from_world=False
@@ -73,4 +67,10 @@ class Configs:
         self.MAX_STEPS=1000000
         self.sleep_time=0
         
-# cfg=Configs()
+    def calculate_padding(self, fov_degrees, drone_height):
+                '''
+                Returns number of pixels from the world that is visible from the centerpoint of 
+                the frame.
+                '''
+                visible_pix=ceil(tan(radians(fov_degrees))*drone_height)
+                return visible_pix
