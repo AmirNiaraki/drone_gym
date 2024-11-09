@@ -15,15 +15,21 @@ class Inferer:
     def __init__(self, cfg):
         self.cfg = cfg
         self.model = 'low_fidelity'
-        self.remove_battery_bar = True
+
         logging.info(f'Using model: {self.model}')
 
     def infer(self, frame):
         # TODO: remove the battery bar from frame entirely in the project
-        if self.remove_battery_bar:
-
-            frame=frame[0:self.cfg.FRAME_H,0:self.cfg.FRAME_W]
-            # self.write_sample_to_disk(frame)
+        # count the number of black pixels within the frame
+        if self.model == 'low_fidelity':
+            cv2.imwrite('images/frame_for_inference.jpg', frame)
+            score=self.count_black_pixels(frame)
+        
+    def count_black_pixels(self, frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        black_pixels = gray.size - cv2.countNonZero(gray)
+        logging.info(f'Number of black pixels: {black_pixels}')
+        return black_pixels
 
     def write_sample_to_disk(self, frame):
         cv2.imwrite('images/frame_for_inference.jpg', frame)
