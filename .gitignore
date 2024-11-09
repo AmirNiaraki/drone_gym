@@ -11,3 +11,4 @@ __pycache__/
 **.pth
 **.log
 **.npy
+.DS_Store

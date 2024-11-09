@@ -16,7 +16,6 @@ parser.supervised = True
 parser.depth = 50
 parser.num_classes = 1
 parser.dim_out = 32
-parser.model_path = "weights/model_final.pt"
 parser.model_path = "/Volumes/EX_DRIVE/new_git/weights/best_anomaly.pt"
 
 retinanet = model.resnet50(num_classes=1, pretrained=True)
