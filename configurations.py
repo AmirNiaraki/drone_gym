@@ -23,22 +23,23 @@ class Configs:
 
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
 # basicaly frame H/W ~ Tan(FOV_Y)/Tan(FOV_X) 
-        self.min_flight_height=100
-        self.max_flight_height=200
+        self.min_flight_height=80
+        self.max_flight_height=80
 
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
         self.FRAME_W=100 #unit: pixels
         self.FRAME_H=100 #unit: pixels
         self.PADDING = self.calculate_padding(max(self.FOV_X,self.FOV_Y), self.max_flight_height)
-        self.init_location=[self.PADDING,self.PADDING,self.min_flight_height]
+        self.init_location=(self.PADDING,self.PADDING,self.min_flight_height)
         self.random_init_location=False
         
         if self.load_from_geotiff: ### this is where we load the world from the images dimensions
                 import cv2
                 img=cv2.imread(self.geotiff_path)
                 self.wolrd_size_including_padding=[img.shape[1],img.shape[0]] 
-                # print('img shape:',img.shape, 'world size:',self.wolrd_size_including_padding)
+                print('image height and width: ', img.shape[0], img.shape[1])
+                ### WORLD_Xs and Ys will be updated inside the environment based on size of the image.
                 self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
                 self.WORLD_ZS=[self.min_flight_height,self.max_flight_height]
@@ -66,6 +67,8 @@ class Configs:
         self.MAX_STEPS=1000000
         self.sleep_time=0
         self.create_explored_map=True
+        self.save_map_to_file=True
+        self.show_location=False
         
     def calculate_padding(self, fov_degrees, drone_height):
                 '''

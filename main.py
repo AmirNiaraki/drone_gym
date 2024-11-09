@@ -24,12 +24,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Drone navigation script")
     parser.add_argument('--image_path', type=str, default='images/sample.png', help='Path to the input image')
     parser.add_argument('--navigator', type=str, choices=['complete', 'keyboard'], default='keyboard', help='Type of navigator to use')
+    parser.add_argument('--show_location', type=bool, default=False, help='Print out the location of the drone')
     return parser.parse_args()
 
-def main(image_path, navigator_type):
+def main(image_path, navigator_type, show_location=False):
     logging.info(f"Using image: {image_path}")
     logging.info(f"Using navigator: {navigator_type}")
-    env = initialize_env(image_path)
+    env = initialize_env(image_path, show_location)
     # for navigation
     if navigator_type == 'complete':
         navigator = CompleteCoverageNavigator(env)
@@ -39,16 +40,17 @@ def main(image_path, navigator_type):
     model = Inferer(env.cfg)
     for obs in navigator.navigate():
         # Process the observation
-        logging.info(f"Observation: {obs.shape}")
+        # logging.info(f"Observation: {obs.shape}")
         model.infer(obs)
 
         # cv2.imwrite('images/observation.jpg', obs)
 
-def initialize_env(input_map):
+def initialize_env(input_map, show_location):
     env = droneEnv(observation_mode='cont', action_mode='cont', render=True, img_path=input_map)
+    env.cfg.show_location =show_location
     return env
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args = parse_args()
-    main(args.image_path, args.navigator)
+    main(args.image_path, args.navigator, args.show_location)

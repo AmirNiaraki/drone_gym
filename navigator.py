@@ -2,7 +2,7 @@ from drone_environment import droneEnv
 import time
 import numpy as np
 import cv2  # Add this import for keyboard input
-
+import logging
 class Navigator:
     def __init__(self, env):
         self.env = env
@@ -18,6 +18,9 @@ class CompleteCoverageNavigator(Navigator):
         self.LTR = 1
         self.steps = 0
         self.rewards = []
+        # setting the height to maximum in self.location which is a tuple
+        self.env.location = (self.env.cfg.init_location[0], self.env.cfg.init_location[1], self.env.cfg.WORLD_ZS[1])
+
 
     def navigate(self):
         for i in range(1):
@@ -37,7 +40,7 @@ class CompleteCoverageNavigator(Navigator):
                         yield obs
                 self.step_x = -self.step_x
                 self.LTR = -self.LTR
-                if self.env.done == False and abs(self.env.location[1] - self.env.cfg.WORLD_YS[1]) > 1:
+                if self.env.done == False and abs(self.env.location[1] - self.env.cfg.WORLD_YS[1]) > self.env.cfg.PADDING+1:
                     obs, reward, done, _, info = self.env.step([0, self.step_y, 0])
                     yield obs
                 else:
@@ -75,11 +78,11 @@ class KeyboardNavigator(Navigator):
             action = self.keyboard_stepper(key)
             if i == 1:
                 obs, reward, done, _, info = self.env.step(action)
-                print('locations', info)
+
                 i = 0
                 yield obs
             if action != [0, 0, 0]:
                 obs, reward, done, _, info = self.env.step(action)
-                print(info)
+                logging.info(f'location after step {info}')
                 yield obs
         self.env.close()

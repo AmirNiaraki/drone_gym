@@ -58,11 +58,13 @@ class droneEnv(gymnasium.Env):
         self.render=render
         
         self.image_path=img_path if img_path != None else self.cfg.geotiff_path
-        logging.info(f'image path: {self.image_path}')
 
         # self.world=None
 
-        self.location=self.cfg.init_location.copy()
+        self.location=self.cfg.init_location
+        self.path=[] # list of all locations visited by the drone
+        self.path.append(self.location)
+        logging.info(f'initial location of drone: {self.location}')
 
         if self.cfg.load_from_geotiff==True:
             self.world=self.load_geotiff()
@@ -115,6 +117,7 @@ class droneEnv(gymnasium.Env):
         self.imager_thread_name=threading.current_thread()
         print('top of the thread')
         self.world_img = self.world
+
         while self.done==False:
             self.visible_x=ceil(tan(radians(self.cfg.FOV_X))*2*self.location[2])
             self.visible_y=ceil(tan(radians(self.cfg.FOV_Y))*2*self.location[2])
@@ -171,13 +174,16 @@ class droneEnv(gymnasium.Env):
         '''
         self.action=action     
         self.reward=0
-
+        
         if self.action_mode=='cont':
             # new location is assigned and reward of movement is calculated (move_cost())
             self.move_by_velocity()
         if self.action_mode=='disc':
             self.move_by_tile()
-        info={self.location[0],self.location[1],self.location[2]}
+        self.path.append(self.location)
+        info={self.location}
+        if self.cfg.show_location:
+            logging.info(f'location after step {info}')
        
         if self.battery<1:
              self.reward-=10
@@ -193,8 +199,8 @@ class droneEnv(gymnasium.Env):
         
         # exit()
         _score=self.fetch_anomaly()
-        if _score>0:
-            print('step',self.step_count, '\n this reward: ', _score, '\n')
+        # if _score>0:
+        #     print('step',self.step_count, '\n this reward: ', _score, '\n')
         self.reward+=_score
         # self.reward+=self.fetch_anomaly()
         self.total_reward+=self.reward
@@ -230,22 +236,23 @@ class droneEnv(gymnasium.Env):
 
     def move_by_velocity(self):
         self.abs_velocity=self.action
-        
-        if  self.abs_velocity[0]<0:
-            self.location[0]=max(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[0])  
+
+        if self.abs_velocity[0] < 0:
+            new_x = max(self.location[0] + self.abs_velocity[0], self.cfg.WORLD_XS[0])
         else:
-            self.location[0]=min(self.location[0]+ self.abs_velocity[0], self.cfg.WORLD_XS[1])
+            new_x = min(self.location[0] + self.abs_velocity[0], self.cfg.WORLD_XS[1])
         
-        if  self.abs_velocity[1]<0:
-            self.location[1]=max(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[0])  
+        if self.abs_velocity[1] < 0:
+            new_y = max(self.location[1] + self.abs_velocity[1], self.cfg.WORLD_YS[0])
         else:
-            self.location[1]=min(self.location[1]+ self.abs_velocity[1], self.cfg.WORLD_YS[1])
+            new_y = min(self.location[1] + self.abs_velocity[1], self.cfg.WORLD_YS[1])
         
-        if  self.abs_velocity[2]<0:
-            self.location[2]=max(self.location[2]+ self.abs_velocity[2],self.cfg. WORLD_ZS[0])  
+        if self.abs_velocity[2] < 0:
+            new_z = max(self.location[2] + self.abs_velocity[2], self.cfg.WORLD_ZS[0])
         else:
-            self.location[2]=min(self.location[2]+ self.abs_velocity[2], self.cfg.WORLD_ZS[1])
-             
+            new_z = min(self.location[2] + self.abs_velocity[2], self.cfg.WORLD_ZS[1])
+        
+        self.location = (new_x, new_y, new_z)
         self.reward =- self.move_cost()
 
 
@@ -297,7 +304,15 @@ class droneEnv(gymnasium.Env):
 
     def load_geotiff(self):
         geo=cv2.imread(self.image_path)
-        logging.info(f'geotiff loaded from file with size {geo.shape[0], geo.shape[1]}')
+        logging.info(f'geotiff loaded from file {self.image_path} with size {geo.shape[0], geo.shape[1]} and padding of {self.cfg.PADDING}')
+
+        self.cfg.wolrd_size_including_padding=[geo.shape[1],geo.shape[0]] 
+
+        self.cfg.WORLD_XS=[self.cfg.PADDING, self.cfg.wolrd_size_including_padding[0]-self.cfg.PADDING]
+        self.cfg.WORLD_YS=[self.cfg.PADDING, self.cfg.wolrd_size_including_padding[1]-self.cfg.PADDING]
+        logging.info(f'Minimum and maximum bounds for Xs of the world: {self.cfg.WORLD_XS}')
+        logging.info(f'Minimum and maximum bounds for Ys of the world: {self.cfg.WORLD_YS}')
+        logging.info(f'Minimum and maximum bounds for Zs of the world: {self.cfg.WORLD_ZS}')
         return geo
 
     def padd_based_on_resolution(self, img):
@@ -356,10 +371,23 @@ class droneEnv(gymnasium.Env):
     
     def close(self):
         # print('trying to close the env and destroy windows...')
-        self.done=True
+        logging.info('Closing the env')
+        self.done=True       
         time.sleep(0.1)
         self.imager_thread_name.join()
         cv2.destroyAllWindows()
+
+        if self.cfg.save_map_to_file and self.cfg.create_explored_map:
+            logging.info(f'Adding the path to image and saving to file. Path length: {len(self.path)}')
+            for i in range(1,len(self.path)):
+                self.explored_map = cv2.line(self.explored_map, tuple(self.path[i-1][:2]), tuple(self.path[i][:2]), (255, 255, 0), 3)
+
+            output_name=self.image_path.split('.')[0]+'_path.png'
+            # showing the output image for 5 seconds before saving to file
+            cv2.imshow(' Resulted Path', self.explored_map)
+            cv2.waitKey(5000)
+            cv2.destroyAllWindows()
+            cv2.imwrite(output_name, self.explored_map)
         
         
 ### method receives frame as np array adds a column the end that represent battery level    
@@ -427,12 +455,12 @@ class droneEnv(gymnasium.Env):
             img_resized=cv2.putText(img_resized, 'battery: '+ str(np.round(self.battery, 2)), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img_resized=cv2.putText(img_resized, 'Heading angle w.r.t wind: '+ str(np.round(self.wind_angle,2)), (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             img_resized=cv2.putText(img_resized, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            cv2.imwrite('images/world_resized.png', img_resized)
             cv2.imshow('World view', img_resized)
 
             if self.cfg.create_explored_map:
                 explored_map_resized=cv2.resize(self.explored_map,(long_edge, short_edge))
                 cv2.imshow('Explored map', explored_map_resized)
+
             
         except Exception as e:
             logging.info(f'Frame not available for render! with error {e}')
