@@ -68,7 +68,10 @@ class droneEnv(gymnasium.Env):
             self.world=self.load_geotiff()
         else:
             self.world=self.world_genertor()
-        
+        if self.cfg.create_explored_map:
+            self.explored_map=self.world.copy()
+            self.explored_map.fill(0)
+
         # print(type(self.world), self.world.shape)
             
         
@@ -123,6 +126,8 @@ class droneEnv(gymnasium.Env):
 
           
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
+
+            self.explored_map[self.boundaries[0]:self.boundaries[1], self.boundaries[2]:self.boundaries[3]] = crop
             # cv2.imwrite('images/crop.png',crop)
             # print('wrote images/crop.png for sanity check')
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))  
@@ -404,9 +409,8 @@ class droneEnv(gymnasium.Env):
         try:
             ##drone crop
             drone_crop=self.fetch_frame()
-
-            # drone_crop_resized=cv2.resize(drone_crop, (drone_crop.shape[1] // 3, drone_crop.shape[0] // 3))
             cv2.imshow('just fetched',drone_crop)
+
             ##world crop
             img=self.world_img.copy()
             img=cv2.rectangle(img, (self.boundaries[2],self.boundaries[0]),(self.boundaries[3],self.boundaries[1]),(255, 0, 0),5)
@@ -425,6 +429,10 @@ class droneEnv(gymnasium.Env):
             img_resized=cv2.putText(img_resized, 'flight altitude: '+ str(np.round(self.location[2],2)), (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
             cv2.imwrite('images/world_resized.png', img_resized)
             cv2.imshow('World view', img_resized)
+
+            if self.cfg.create_explored_map:
+                explored_map_resized=cv2.resize(self.explored_map,(long_edge, short_edge))
+                cv2.imshow('Explored map', explored_map_resized)
             
         except Exception as e:
             logging.info(f'Frame not available for render! with error {e}')

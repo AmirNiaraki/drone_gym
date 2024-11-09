@@ -24,7 +24,7 @@ class Configs:
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
 # basicaly frame H/W ~ Tan(FOV_Y)/Tan(FOV_X) 
         self.min_flight_height=100
-        self.max_flight_height=400
+        self.max_flight_height=200
 
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
@@ -48,14 +48,13 @@ class Configs:
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
                 self.WORLD_ZS=[self.min_flight_height,self.max_flight_height]
         
-        self.SEEDS=20
+        self.SEEDS=200
         self.square_size_range=(1,10)
         self.remove_redetected_from_world=False
 
 
         self.FULL_BATTERY=100.
         self.MAX_SPEED=5 #maximum allowed drone speed
-        self.PADDING=max(self.FRAME_H,self.FRAME_W)/2 #padding for the world
         self.FPS=30
         self.OVERLAP=0.5
         ### the default wind is blowing towards positive x (west to east) 
@@ -66,6 +65,7 @@ class Configs:
         ### how many steps per episode
         self.MAX_STEPS=1000000
         self.sleep_time=0
+        self.create_explored_map=True
         
     def calculate_padding(self, fov_degrees, drone_height):
                 '''
