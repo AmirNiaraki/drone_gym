@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
     # image = cv2.imread("/Volumes/EX_DRIVE/new_git/images/resize.png")
     # ClusteringDetector.fit_kmeans(image)
-    # model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
+    cluster = ClusteringDetector("kmeans_model.pkl", selected_label=2)
     # Load your model
     config = ModelConfig()
     model = RetinaNetDetector(config, confidence_threshold=0.8)
@@ -172,14 +172,19 @@ if __name__ == "__main__":
     image = cv2.imread(
         "/Volumes/EX_DRIVE/new_git/images/NDVI/2021-7-13_field1_w0_h0.png"
     )
+
+    # for visualization
+    def draw_boxes(image, boxes, color=(0, 255, 0)):
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box[:4])
+            image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+        return image
+
     # Run inference
-    boxes, scores = model.infer(image)
-    for box in boxes:
-        x_min = int(box[0])
-        y_min = int(box[1])
-        x_max = int(box[2])
-        y_max = int(box[3])
-        image = cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2)
-    cv2.imshow("image", image)
+    boxes, scores = model.infer(image.copy())
+    result_image = draw_boxes(image.copy(), boxes, color=(0, 0, 255))
+    boxes, _ = cluster.infer(image.copy())
+    result_image = draw_boxes(result_image, boxes, )
+    cv2.imshow("image", result_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
