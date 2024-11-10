@@ -84,22 +84,28 @@ class RetinaNetDetector(BaseDetector):
 
 
 class ClusteringDetector(BaseDetector):
-    def __init__(self, model_path, selected_label=1):
+    def __init__(self, model_path, selected_label=1, train=False):
         self.kmeans_cluster = self.load_kmeans(model_path)
+        # for repeatability
         self.cluster_centers = self.kmeans_cluster.cluster_centers_
+        sorted_indices = np.argsort(self.cluster_centers[:, 0])  # Or sort by another dimension
+        self.cluster_centers = self.cluster_centers[sorted_indices]
+
         self.selected_label = selected_label
 
-    def fit_kmeans(self, image):
+    @staticmethod
+    def fit_kmeans(image, n_clusters=4):
+        image = ClusteringDetector.preprocess(image)
         x, y, z = image.shape
         image_2d = image.reshape(x * y, z)
-        image_2d.shape
-        kmeans_cluster = cluster.KMeans(n_clusters=4)
+        kmeans_cluster = cluster.KMeans(n_clusters=n_clusters)
         kmeans_cluster.fit(image_2d)
-        self.save_kmeans(kmeans_cluster)
+        ClusteringDetector.save_kmeans(kmeans_cluster)
 
-    def save_kmeans(self, kmeans_cluster):
+    @staticmethod
+    def save_kmeans(kmeans_cluster, path="kmeans_model.pkl"):
         # Save the model
-        with open("kmeans_model.pkl", "wb") as f:
+        with open(path, "wb") as f:
             pickle.dump(kmeans_cluster, f)
         print("done saving")
 
@@ -109,7 +115,8 @@ class ClusteringDetector(BaseDetector):
 
         return kmeans_cluster
 
-    def preprocess(self, image):
+    @staticmethod
+    def preprocess(image):
         return image / 255
 
     def predict(self, image):
@@ -154,11 +161,12 @@ class ClusteringDetector(BaseDetector):
 
 if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
-    # image = cv2.imread("/Volumes/EX_DRIVE/new_git/images/resize.png") / 255
-    model = ClusteringDetector("kmeans_model.pkl")
+    # image = cv2.imread("/Volumes/EX_DRIVE/new_git/images/resize.png")
+    # ClusteringDetector.fit_kmeans(image)
+    # model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
     # Load your model
-    # config = ModelConfig()
-    # model = RetinaNetDetector(config)
+    config = ModelConfig()
+    model = RetinaNetDetector(config, confidence_threshold=0.8)
 
     # Load an image
     image = cv2.imread(
