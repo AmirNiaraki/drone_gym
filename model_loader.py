@@ -1,42 +1,75 @@
 import sys
 
-sys.path.append("pytorch-retinanet")
 import torch
+
+sys.path.append("pytorch-retinanet")
 from retinanet import model
 
 
-# produce a fake parser to pass to the class with the options we need
-class Parser:
-    pass
+class ModelConfig:
+    def __init__(
+        self,
+        supervised=True,
+        depth=50,
+        num_classes=1,
+        dim_out=32,
+        model_path="/Volumes/EX_DRIVE/new_git/weights/best_anomaly.pt",
+    ):
+        self.supervised = supervised
+        self.depth = depth
+        self.num_classes = num_classes
+        self.dim_out = dim_out
+        self.model_path = model_path
 
 
-# creates a parser
-parser = Parser()
-parser.supervised = True
-parser.depth = 50
-parser.num_classes = 1
-parser.dim_out = 32
-parser.model_path = "/Volumes/EX_DRIVE/new_git/weights/best_anomaly.pt"
+def load_retinanet(config=None):
+    """
+    Load and configure the RetinaNet model
+    Args:
+        config (ModelConfig, optional): Configuration for the model.
+                                      If None, uses default settings.
+    Returns:
+        model: Configured RetinaNet model
+    """
+    if config is None:
+        config = ModelConfig()
 
-retinanet = model.resnet50(num_classes=1, pretrained=True)
+    retinanet = None
+    # Initialize model
+    if config.depth == 18:
+        retinanet = model.resnet18(num_classes=config.num_classes, pretrained=True)
+    if config.depth == 50:
+        retinanet = model.resnet50(num_classes=config.num_classes, pretrained=True)
+    if config.depth == 101:
+        retinanet = model.resnet101(num_classes=config.num_classes, pretrained=True)
 
-use_gpu = True
+    # Configure device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if use_gpu:
-    if torch.cuda.is_available():
-        retinanet = retinanet.cuda()
+    # Load weights
+    if device.type == "cuda":
+        print("Loading to cuda")
+        retinanet.load_state_dict(torch.load(config.model_path))
+        retinanet = torch.nn.DataParallel(retinanet).cuda()
+    else:
+        print("Loading to cpu")
+        dictionary_weights = torch.load(config.model_path, map_location=device)
+        retinanet.load_state_dict(dictionary_weights, strict=False)
+        retinanet = torch.nn.DataParallel(retinanet)
+        print("Done loading model")
 
-if torch.cuda.is_available():
-    print('loading to cuda')
-    retinanet.load_state_dict(torch.load(parser.model_path))
-    retinanet = torch.nn.DataParallel(retinanet).cuda()
-else:
-    print('loading to cpu')
-    dictionary_weights = torch.load(parser.model_path, map_location=torch.device('cpu'))
-    retinanet.load_state_dict(dictionary_weights, strict=False)
-    retinanet = torch.nn.DataParallel(retinanet)
-    print('done loading model')
+    # Set model to evaluation mode
+    retinanet.training = False
+    retinanet.module.freeze_bn()
+    retinanet.eval()
 
-retinanet.training = False
-retinanet.module.freeze_bn()
-retinanet.eval();
+    return retinanet
+
+
+# Example usage
+if __name__ == "__main__":
+    # Create custom config if needed
+    custom_config = ModelConfig(model_path="/Volumes/EX_DRIVE/new_git/weights/best_anomaly.pt")
+
+    # Load model with custom config
+    model = load_retinanet(custom_config)
