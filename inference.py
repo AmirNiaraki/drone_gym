@@ -13,21 +13,28 @@ import logging
 import cv2
 import numpy as np
 import torch
+from model_loader import ModelConfig
+from detector import RetinaNetDetector
 
 
 class Inferer:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.model = "low_fidelity"
+        self.model_type = "retina"
+        self.model = RetinaNetDetector(ModelConfig(), confidence_threshold=0.8)
 
         logging.info(f"Using model: {self.model}")
 
     def infer(self, frame):
         # TODO: remove the battery bar from frame entirely in the project
         # count the number of black pixels within the frame
-        if self.model == "low_fidelity":
+        if self.model_type == "low_fidelity":
             cv2.imwrite("images/frame_for_inference.jpg", frame)
             score = self.count_black_pixels(frame)
+        if self.model_type == "retina":
+            boxes, _ = self.model.infer(frame.copy())
+            self.draw_boxes(frame, boxes)
+            cv2.imwrite("images/frame_for_inference.jpg", frame)
 
     def count_black_pixels(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -37,3 +44,10 @@ class Inferer:
 
     def write_sample_to_disk(self, frame):
         cv2.imwrite("images/frame_for_inference.jpg", frame)
+
+    @staticmethod
+    def draw_boxes(image, boxes, color=(0, 255, 0)):
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box[:4])
+            image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+        return image
