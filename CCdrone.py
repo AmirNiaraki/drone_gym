@@ -22,8 +22,8 @@ env = droneEnv(observation_mode='cont', action_mode='cont', render=True)
 strides_x=int((env.cfg.WORLD_XS[1]-env.cfg.WORLD_XS[0])/env.visible_x)
 strides_y=int((env.cfg.WORLD_YS[1]-env.cfg.WORLD_YS[0])/env.visible_y)
 
-step_x=20
-step_y=20
+step_x=1280
+step_y=1280
 step_z=1
 LTR=1
 steps=0
@@ -41,6 +41,7 @@ for i in range(1):
 
                     steps+=1
                     rewards.append(reward)
+                    print(info)
                     # time.sleep(0.1)
         # obs, reward, done, _, info =env.step([0, 0, 20])
         # obs, reward, done, _, info =env.step([0, 0, 20])

@@ -13,7 +13,7 @@ class ModelConfig:
         depth=50,
         num_classes=1,
         dim_out=32,
-        model_path="/Volumes/EX_DRIVE/new_git/weights/best_anomaly.pt",
+        model_path="/home/aniaraki/projects/drone_gym/weights/best_anomaly.pt",
     ):
         self.supervised = supervised
         self.depth = depth
@@ -49,8 +49,10 @@ def load_retinanet(config=None):
     # Load weights
     if device.type == "cuda":
         print("Loading to cuda")
-        retinanet.load_state_dict(torch.load(config.model_path))
+        print(config.model_path)
+        retinanet.load_state_dict(torch.load(config.model_path), strict=False)
         retinanet = torch.nn.DataParallel(retinanet).cuda()
+        print('device', device)
     else:
         print("Loading to cpu")
         dictionary_weights = torch.load(config.model_path, map_location=device)
@@ -69,7 +71,7 @@ def load_retinanet(config=None):
 # Example usage
 if __name__ == "__main__":
     # Create custom config if needed
-    custom_config = ModelConfig(model_path="/Volumes/EX_DRIVE/new_git/weights/best_anomaly.pt")
+    custom_config = ModelConfig(model_path="/home/aniaraki/projects/drone_gym/weights/best_anomaly.pt")
 
     # Load model with custom config
     model = load_retinanet(custom_config)

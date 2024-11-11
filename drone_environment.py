@@ -129,10 +129,10 @@ class droneEnv(gymnasium.Env):
 
           
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
-
-            self.explored_map[self.boundaries[0]:self.boundaries[1], self.boundaries[2]:self.boundaries[3]] = crop
-            # cv2.imwrite('images/crop.png',crop)
-            # print('wrote images/crop.png for sanity check')
+            if self.cfg.create_explored_map:
+                self.explored_map[self.boundaries[0]:self.boundaries[1], self.boundaries[2]:self.boundaries[3]] = crop
+                # cv2.imwrite('images/crop.png',crop)
+                # print('wrote images/crop.png for sanity check')
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))  
 
             self.frame=resized
@@ -182,6 +182,7 @@ class droneEnv(gymnasium.Env):
             self.move_by_tile()
         self.path.append(self.location)
         info={self.location}
+        
         if self.cfg.show_location:
             logging.info(f'location after step {info}')
        

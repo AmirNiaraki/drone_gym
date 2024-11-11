@@ -14,14 +14,22 @@ import cv2
 import numpy as np
 import torch
 from model_loader import ModelConfig
-from detector import RetinaNetDetector
-
-
+from detector import RetinaNetDetector, ClusteringDetector
+import logging
 class Inferer:
-    def __init__(self, cfg):
+    def __init__(self, cfg, model_type="retina"):
         self.cfg = cfg
-        self.model_type = "retina"
-        self.model = RetinaNetDetector(ModelConfig(), confidence_threshold=0.8)
+        self.model_type = model_type
+        if model_type == "low_fidelity":
+            pass
+        elif model_type == "retina":
+            self.model = RetinaNetDetector(ModelConfig(), confidence_threshold=0.8)
+
+        elif model_type == "double_clustering":
+            logging.info("Using double clustering model")
+            self.model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
+            pass
+            
 
         logging.info(f"Using model: {self.model}")
 
@@ -29,12 +37,18 @@ class Inferer:
         # TODO: remove the battery bar from frame entirely in the project
         # count the number of black pixels within the frame
         if self.model_type == "low_fidelity":
-            cv2.imwrite("images/frame_for_inference.jpg", frame)
+            # cv2.imwrite("images/frame_for_inference.jpg", frame)
             score = self.count_black_pixels(frame)
+
         if self.model_type == "retina":
             boxes, _ = self.model.infer(frame.copy())
             self.draw_boxes(frame, boxes)
-            cv2.imwrite("images/frame_for_inference.jpg", frame)
+            # cv2.imwrite("images/frame_for_inference.jpg", frame)
+
+        if self.model_type == "double_clustering":
+            boxes, _ = self.model.infer(frame.copy())
+            self.draw_boxes(frame, boxes)
+            # cv2.imwrite("images/frame_for_inference.jpg", frame)
 
     def count_black_pixels(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

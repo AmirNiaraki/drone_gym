@@ -16,20 +16,20 @@ class Configs:
         # self.geotiff_path='2021-7-13-padded.png'
         self.geotiff_path='images/sample.png'
 
-        self.STATES_X=100
+        self.STATES_X=400
         self.STATES_Y=100
         self.STATES_Z=1
         self.init_state=[1,1,1]
 
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
 # basicaly frame H/W ~ Tan(FOV_Y)/Tan(FOV_X) 
-        self.min_flight_height=80
-        self.max_flight_height=80
+        self.min_flight_height=400
+        self.max_flight_height=400
 
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
-        self.FRAME_W=100 #unit: pixels
-        self.FRAME_H=100 #unit: pixels
+        self.FRAME_W=1280 #unit: pixels
+        self.FRAME_H=1280 #unit: pixels
         self.PADDING = self.calculate_padding(max(self.FOV_X,self.FOV_Y), self.max_flight_height)
         self.init_location=(self.PADDING,self.PADDING,self.min_flight_height)
         self.random_init_location=False
@@ -66,9 +66,9 @@ class Configs:
         ### how many steps per episode
         self.MAX_STEPS=1000000
         self.sleep_time=0
-        self.create_explored_map=True
-        self.save_map_to_file=True
-        self.show_location=False
+        self.create_explored_map=False
+        self.save_map_to_file=False
+        self.show_location=True
         
     def calculate_padding(self, fov_degrees, drone_height):
                 '''
