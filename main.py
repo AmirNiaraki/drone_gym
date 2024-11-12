@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--show_location', type=bool, default=False, help='Print out the location of the drone')
     return parser.parse_args()
 
-def main(image_path, navigator_type, show_location=False, model_name='retina'):
+def main(image_path, navigator_type, show_location=False, model_type='retina'):
     logging.info(f"Using image: {image_path}")
     logging.info(f"Using navigator: {navigator_type}")
     env = initialize_env(image_path, show_location)
@@ -39,7 +39,7 @@ def main(image_path, navigator_type, show_location=False, model_name='retina'):
     else:
         navigator = KeyboardNavigator(env)
     # for inference
-    model = Inferer(env.cfg, model_name )
+    model = Inferer(env.cfg, model_type)
     for obs in navigator.navigate():
         # Process the observation
         # logging.info(f"Observation: {obs.shape}")
