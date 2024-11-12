@@ -13,9 +13,11 @@ import logging
 import cv2
 import numpy as np
 import torch
+
+from detector import ClusteringDetector, RetinaNetDetector
 from model_loader import ModelConfig
-from detector import RetinaNetDetector, ClusteringDetector
-import logging
+
+
 class Inferer:
     def __init__(self, cfg, model_type="retina"):
         self.cfg = cfg
@@ -29,7 +31,6 @@ class Inferer:
             logging.info("Using double clustering model")
             self.model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
             pass
-            
 
         logging.info(f"Using model: {self.model}")
 
@@ -39,16 +40,19 @@ class Inferer:
         if self.model_type == "low_fidelity":
             # cv2.imwrite("images/frame_for_inference.jpg", frame)
             score = self.count_black_pixels(frame)
+            return [] # Not sure what to do here
 
         if self.model_type == "retina":
             boxes, _ = self.model.infer(frame.copy())
             self.draw_boxes(frame, boxes)
             # cv2.imwrite("images/frame_for_inference.jpg", frame)
+            return boxes
 
         if self.model_type == "double_clustering":
             boxes, _ = self.model.infer(frame.copy())
             self.draw_boxes(frame, boxes)
             # cv2.imwrite("images/frame_for_inference.jpg", frame)
+            return boxes
 
     def count_black_pixels(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

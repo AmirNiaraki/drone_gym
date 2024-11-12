@@ -59,6 +59,9 @@ class droneEnv(gymnasium.Env):
         
         self.image_path=img_path if img_path != None else self.cfg.geotiff_path
 
+        # used to draw the boxes in the big frame
+        self.current_boxes = []
+
         # self.world=None
 
         self.location=self.cfg.init_location
@@ -135,6 +138,15 @@ class droneEnv(gymnasium.Env):
                 # print('wrote images/crop.png for sanity check')
             resized=cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))  
 
+            # TODO: need to check if there is any conversion between the
+            # inference frame and the big frame
+            for box in self.current_boxes:
+                x1, y1, x2, y2 = map(int, box[:4])
+                # draw box
+                # resized = cv2.rectangle(resized, (x1, y1), (x2, y2), (255, 255, 255), 10)
+                # paint the box
+                cv2.rectangle(resized, (x1, y1), (x2, y2), (0, 0, 255), -1)
+
             self.frame=resized
             
             if self.done==True:
@@ -142,6 +154,10 @@ class droneEnv(gymnasium.Env):
                 break
                 
         # print('Frame Update stopping...  ',  self.imager_thread_name)
+
+    def update_boxes(self, boxes):
+        """Used to update the boxes in the frame"""
+        self.current_boxes = boxes
 
     def fetch_frame(self):
         return self.frame

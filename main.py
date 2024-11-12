@@ -43,7 +43,8 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
     for obs in navigator.navigate():
         # Process the observation
         # logging.info(f"Observation: {obs.shape}")
-        model.infer(obs)
+        boxes = model.infer(obs)
+        env.update_boxes(boxes) # allows drawing of boxes on the image
 
         # cv2.imwrite('images/observation.jpg', obs)
 
