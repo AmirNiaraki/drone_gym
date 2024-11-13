@@ -154,10 +154,10 @@ class droneEnv(gymnasium.Env):
                 world_y2 = int(y2 * scale_y + self.boundaries[0])
 
                 self.mask[world_y1:world_y2, world_x1:world_x2] = 1
-                # draw box
-                # resized = cv2.rectangle(resized, (x1, y1), (x2, y2), (255, 255, 255), 10)
-                # paint the box
-                # cv2.rectangle(resized, (x1, y1), (x2, y2), (0, 0, 255), -1)
+                area_of_anomaly = np.sum(self.mask)
+                percentage_of_anomaly =(area_of_anomaly / (self.cfg.FRAME_H * self.cfg.FRAME_W)) * 100
+                logging.info(f"Current area of anomaly {area_of_anomaly}")
+                logging.info(f"Current percentage of anomaly {percentage_of_anomaly}")
 
             cv2.imshow('mask', self.mask * 255)
             self.frame=resized
