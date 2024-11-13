@@ -86,7 +86,7 @@ class RetinaNetDetector(BaseDetector):
 
 
 class ClusteringDetector(BaseDetector):
-    def __init__(self, model_path, selected_label=1, train=False):
+    def __init__(self, model_path, selected_label=1):
         self.kmeans_cluster = self.load_kmeans(model_path)
         # for repeatability
         self.cluster_centers = self.kmeans_cluster.cluster_centers_
@@ -164,16 +164,16 @@ class ClusteringDetector(BaseDetector):
 
 if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
-    image = cv2.imread("/media/aniaraki/EX_DRIVE/new_git/images/resize.png")
-    ClusteringDetector.fit_kmeans(image)
-    cluster = ClusteringDetector("kmeans_model.pkl", selected_label=2)
+    # image = cv2.imread("images/resize.png")
+    # ClusteringDetector.fit_kmeans(image)
+    model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
     # Load your model
-    config = ModelConfig()
-    model = RetinaNetDetector(config, confidence_threshold=0.8)
+    # config = ModelConfig()
+    # model = RetinaNetDetector(config, confidence_threshold=0.8)
 
     # Load an image
     image = cv2.imread(
-        "/media/aniaraki/EX_DRIVE/new_git/images/2021-7-13_field1_w0_h0.png"
+        "images/NDVI/2021-7-13_field1_w0_h0.png"
     )
 
     # for visualization
@@ -184,10 +184,8 @@ if __name__ == "__main__":
         return image
 
     # Run inference
-    boxes, scores = model.infer(image.copy())
-    result_image = draw_boxes(image.copy(), boxes, color=(0, 0, 255))
-    boxes, _ = cluster.infer(image.copy())
-    result_image = draw_boxes(result_image, boxes, )
-    cv2.imshow("image", result_image)
+    boxes, _ = model.infer(image.copy())
+    result_image = draw_boxes(image, boxes)
+    cv2.imshow("image", image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
