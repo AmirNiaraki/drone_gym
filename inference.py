@@ -29,7 +29,7 @@ class Inferer:
 
         elif model_type == "double_clustering":
             logging.info("Using double clustering model")
-            self.model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
+            self.model = ClusteringDetector("weights/kmeans_model.pkl", selected_label=2)
             pass
 
         logging.info(f"Using model: {self.model}")

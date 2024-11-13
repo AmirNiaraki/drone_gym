@@ -105,11 +105,11 @@ class ClusteringDetector(BaseDetector):
         ClusteringDetector.save_kmeans(kmeans_cluster)
 
     @staticmethod
-    def save_kmeans(kmeans_cluster, path="kmeans_model.pkl"):
+    def save_kmeans(kmeans_cluster, path="./weights/kmeans_model.pkl"):
         # Save the model
         with open(path, "wb") as f:
             pickle.dump(kmeans_cluster, f)
-        print("done saving")
+        logging.info("done saving")
 
     def load_kmeans(self, path):
         with open(f"{path}", "rb") as f:
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
     # image = cv2.imread("images/resize.png")
     # ClusteringDetector.fit_kmeans(image)
-    model = ClusteringDetector("kmeans_model.pkl", selected_label=2)
+    model = ClusteringDetector("weights/kmeans_model.pkl", selected_label=2)
     # Load your model
     # config = ModelConfig()
     # model = RetinaNetDetector(config, confidence_threshold=0.8)
