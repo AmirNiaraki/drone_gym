@@ -90,6 +90,7 @@ class ClusteringDetector(BaseDetector):
         self.kmeans_cluster = self.load_kmeans(model_path)
         # for repeatability
         self.cluster_centers = self.kmeans_cluster.cluster_centers_
+        logging.info(f"Cluster centers: {self.cluster_centers}")
         sorted_indices = np.argsort(self.cluster_centers[:, 0])  # Or sort by another dimension
         self.cluster_centers = self.cluster_centers[sorted_indices]
 
@@ -164,8 +165,8 @@ class ClusteringDetector(BaseDetector):
 
 if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
-    # image = cv2.imread("images/resize.png")
-    # ClusteringDetector.fit_kmeans(image)
+    image = cv2.imread("images/resize.png")
+    ClusteringDetector.fit_kmeans(image, n_clusters=4)
     model = ClusteringDetector("weights/kmeans_model.pkl", selected_label=2)
     # Load your model
     # config = ModelConfig()
