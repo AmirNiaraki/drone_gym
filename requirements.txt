@@ -1,8 +1,8 @@
 #gymnasium
 pandas
 stable-baselines3
-opencv-python
-torchvision
+# opencv-python
+# torchvision
 scikit-learn
 scikit-image
 pycocotools

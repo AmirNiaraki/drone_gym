@@ -13,7 +13,7 @@ class ModelConfig:
         depth=50,
         num_classes=1,
         dim_out=32,
-        model_path="/home/aniaraki/projects/drone_gym/weights/best_anomaly.pt",
+        model_path="weights/best_anomaly.pt",
     ):
         self.supervised = supervised
         self.depth = depth

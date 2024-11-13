@@ -76,6 +76,7 @@ class droneEnv(gymnasium.Env):
         if self.cfg.create_explored_map:
             self.explored_map=self.world.copy()
             self.explored_map.fill(0)
+        self.mask = np.zeros((self.world.shape[0], self.world.shape[1]), dtype=np.uint8) 
 
         # print(type(self.world), self.world.shape)
             
@@ -130,7 +131,6 @@ class droneEnv(gymnasium.Env):
             self.boundaries=[int(-self.visible_y/2+self.location[1]),int(self.visible_y/2+self.location[1]), 
                              int(-self.visible_x/2+self.location[0]),int(self.visible_x/2+self.location[0])]
 
-          
             crop=self.world_img[self.boundaries[0]:self.boundaries[1],self.boundaries[2]:self.boundaries[3]]
             if self.cfg.create_explored_map:
                 self.explored_map[self.boundaries[0]:self.boundaries[1], self.boundaries[2]:self.boundaries[3]] = crop
@@ -141,12 +141,25 @@ class droneEnv(gymnasium.Env):
             # TODO: need to check if there is any conversion between the
             # inference frame and the big frame
             for box in self.current_boxes:
+                # Calculate scaling factors
+                scale_x = self.visible_x / self.cfg.FRAME_W
+                scale_y = self.visible_y / self.cfg.FRAME_H
+
                 x1, y1, x2, y2 = map(int, box[:4])
+
+                # Convert to world coordinates
+                world_x1 = int(x1 * scale_x + self.boundaries[2])
+                world_y1 = int(y1 * scale_y + self.boundaries[0])
+                world_x2 = int(x2 * scale_x + self.boundaries[2])
+                world_y2 = int(y2 * scale_y + self.boundaries[0])
+
+                self.mask[world_y1:world_y2, world_x1:world_x2] = 1
                 # draw box
                 # resized = cv2.rectangle(resized, (x1, y1), (x2, y2), (255, 255, 255), 10)
                 # paint the box
-                cv2.rectangle(resized, (x1, y1), (x2, y2), (0, 0, 255), -1)
+                # cv2.rectangle(resized, (x1, y1), (x2, y2), (0, 0, 255), -1)
 
+            cv2.imshow('mask', self.mask * 255)
             self.frame=resized
             
             if self.done==True:

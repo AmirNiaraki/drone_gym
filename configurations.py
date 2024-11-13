@@ -14,7 +14,7 @@ class Configs:
     def __init__(self):
         self.load_from_geotiff=True # if false then the world is generated with random seeds
         # self.geotiff_path='2021-7-13-padded.png'
-        self.geotiff_path='images/sample.png'
+        self.geotiff_path='images/resize.png'
 
         self.STATES_X=400
         self.STATES_Y=100
