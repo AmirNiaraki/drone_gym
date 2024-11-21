@@ -180,6 +180,7 @@ class droneEnv(gymnasium.Env):
             # TODO: need to check if there is any conversion between the
             # inference frame and the big frame
             for box in self.current_boxes:
+                logging.info(f"Box: {self.current_boxes}")
                 # Calculate scaling factors
                 scale_x = self.visible_x / self.cfg.FRAME_W
                 scale_y = self.visible_y / self.cfg.FRAME_H

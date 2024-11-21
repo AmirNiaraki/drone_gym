@@ -44,6 +44,8 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
         # Process the observation
         # logging.info(f"Observation: {obs.shape}")
         boxes = model.infer(obs)
+        if boxes is not []:
+            logging.info(f"Detected {boxes}")
         env.update_boxes(boxes) # allows drawing of boxes on the image
 
         # cv2.imwrite('images/observation.jpg', obs)
