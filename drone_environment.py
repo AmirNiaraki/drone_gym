@@ -81,6 +81,17 @@ class droneEnv(gymnasium.Env):
             self.explored_map = self.world.copy()
             self.explored_map.fill(0)
         self.mask = np.zeros((self.world.shape[0], self.world.shape[1]), dtype=np.uint8)
+        self.drone_data = {
+            "step_count": [],
+            "battery_levels": [],
+            "anomaly_areas": [],
+            "percentages_of_anomaly": [],
+            "locations": [],
+            "world_x1": [],
+            "world_y1": [],
+            "world_x2": [],
+            "world_y2": [],
+        }
 
         # print(type(self.world), self.world.shape)
 
@@ -188,9 +199,27 @@ class droneEnv(gymnasium.Env):
                 ) * 100
                 logging.info(f"Current area of anomaly {area_of_anomaly}")
                 logging.info(f"Current percentage of anomaly {percentage_of_anomaly}")
+                logging.info(f"Locations {world_x1, world_y1, world_x2, world_y2}")
+                logging.info(f"Original locations {x1, y1, x2, y2}")
+
+
+                # Store values in the evaluation dictionary
+                self.drone_data["step_count"].append(self.step_count)
+                self.drone_data["battery_levels"].append(self.battery)
+                self.drone_data["anomaly_areas"].append(area_of_anomaly)
+                self.drone_data["percentages_of_anomaly"].append(percentage_of_anomaly)
+                self.drone_data["locations"].append(self.location)
+
+                # Save world coordinates
+                self.drone_data["world_x1"].append(world_x1)
+                self.drone_data["world_y1"].append(world_y1)
+                self.drone_data["world_x2"].append(world_x2)
+                self.drone_data["world_y2"].append(world_y2)
+                # print(self.drone_data)
 
             cv2.imshow("mask", self.mask * 255)
             self.frame = resized
+            self.current_boxes = []
 
             if self.done == True:
                 # print('done is true instide update_frame() trying to join')
