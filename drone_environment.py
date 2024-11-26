@@ -109,7 +109,7 @@ class droneEnv(gymnasium.Env):
         self.step_count = 0
         self.battery_inloop = True if self.cfg.battery_inloop else False
 
-        self.drag_normalizer_coef = 0.5
+        self.drag_normalizer_coef = 0.005
 
         self.action = [0, 0, 0]
         if self.observation_mode == "cont":
@@ -553,6 +553,12 @@ class droneEnv(gymnasium.Env):
                 (255, 255, 0),
                 3,
             )
+            if self.path[i - 1][2] > self.path[i][2]:
+                self.explored_map = cv2.circle(
+                    self.explored_map, tuple(self.path[i][:2]), 5, (255, 0, 0), -1)
+            elif self.path[i - 1][2] < self.path[i][2]:
+                self.explored_map = cv2.circle(
+                    self.explored_map, tuple(self.path[i][:2]), 5, (0, 255, 0), -1)
         output_name = self.image_path.split(".")[0] + "_path.png"
         # showing the output image for 5 seconds before saving to file
         cv2.imshow(" Resulted Path", self.explored_map)
@@ -641,7 +647,7 @@ class droneEnv(gymnasium.Env):
         try:
             ##drone crop
             drone_crop = self.fetch_frame()
-            cv2.imshow("just fetched", drone_crop)
+            cv2.imshow("Drone View", drone_crop)
 
             ##world crop
             img = self.world_img.copy()

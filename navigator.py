@@ -13,8 +13,8 @@ class Navigator:
 class CompleteCoverageNavigator(Navigator):
     def __init__(self, env):
         super().__init__(env)
-        self.step_x = 20
-        self.step_y = 20
+        self.step_x = 100
+        self.step_y = 100
         self.LTR = 1
         self.steps = 0
         self.rewards = []
@@ -23,12 +23,18 @@ class CompleteCoverageNavigator(Navigator):
 
 
     def navigate(self):
+        first_step = False
         for i in range(1):
             print('Iteration: ', i, '\n supposed location: ', self.env.location, 'configurations: ', self.env.cfg.init_location)
+            
             while True:
+
                 if self.LTR == 1:
                     while self.env.done == False and abs(self.env.location[0] - self.env.cfg.WORLD_XS[1]) > 1:
                         obs, reward, done, _, info = self.env.step([self.step_x, 0, 0])
+                        if first_step:
+                            time.sleep(10)
+                            first_step = False
                         self.steps += 1
                         self.rewards.append(reward)
                         yield obs, info
@@ -51,21 +57,22 @@ class CompleteCoverageNavigator(Navigator):
 class KeyboardNavigator(Navigator):
     def __init__(self, env):
         super().__init__(env)
+        self.step_size=50
 
     def keyboard_stepper(self, key):
         x, y, z = 0, 0, 0
         if key == ord('w'):  # Up
-            y -= 10
+            y -= self.step_size
         elif key == ord('s'):  # Down
-            y += 10
+            y += self.step_size
         elif key == ord('a'):  # Left
-            x -= 10
+            x -= self.step_size
         elif key == ord('d'):  # Right
-            x += 10
+            x += self.step_size
         elif key == ord('z'):
-            z -= 10
+            z -= self.step_size
         elif key == ord('x'):
-            z += 10
+            z += self.step_size
         elif key == ord('o'):
             x, y, z = 1000,1000,1000
         action = [x, y, z]

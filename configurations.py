@@ -24,14 +24,15 @@ class Configs:
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
 # basicaly frame H/W ~ Tan(FOV_Y)/Tan(FOV_X) 
         self.min_flight_height=60
-        self.max_flight_height=160
+        self.max_flight_height=180
 
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
-        self.FRAME_W=100 #unit: pixels
-        self.FRAME_H=100 #unit: pixels
+        self.FRAME_W=320 #unit: pixels
+        self.FRAME_H=320 #unit: pixels
         self.PADDING = self.calculate_padding(max(self.FOV_X,self.FOV_Y), self.max_flight_height)
         self.init_location=(self.PADDING,self.PADDING,self.min_flight_height)
+        
         self.random_init_location=False
         
         if self.load_from_geotiff and self.geotiff_path is not None: ### this is where we load the world from the images dimensions
