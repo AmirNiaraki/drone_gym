@@ -23,6 +23,7 @@ class Inferer:
         self.cfg = cfg
         self.model_type = model_type
         if model_type == "low_fidelity":
+            self.model = "low_fidelity"
             pass
         elif model_type == "retina":
             self.model = RetinaNetDetector(ModelConfig(), confidence_threshold=0.8)
@@ -35,6 +36,13 @@ class Inferer:
         logging.info(f"Using model: {self.model}")
 
     def infer(self, frame):
+        '''
+        This function receives a frame and returns the bounding boxes of the detected objects as a list
+        args:
+            frame: a numpy array representing the frame
+        returns:
+            boxes: a list of bounding boxes of the detected objects
+        '''
         # TODO: remove the battery bar from frame entirely in the project
         # count the number of black pixels within the frame
         if self.model_type == "low_fidelity":

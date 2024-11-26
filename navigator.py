@@ -31,18 +31,18 @@ class CompleteCoverageNavigator(Navigator):
                         obs, reward, done, _, info = self.env.step([self.step_x, 0, 0])
                         self.steps += 1
                         self.rewards.append(reward)
-                        yield obs
+                        yield obs, info
                 if self.LTR == -1:
                     while self.env.done == False and abs(self.env.location[0] - self.env.cfg.WORLD_XS[0]) > 1:
                         obs, reward, done, _, info = self.env.step([self.step_x, 0, 0])
                         self.steps += 1
                         self.rewards.append(reward)
-                        yield obs
+                        yield obs, info
                 self.step_x = -self.step_x
                 self.LTR = -self.LTR
                 if self.env.done == False and abs(self.env.location[1] - self.env.cfg.WORLD_YS[1]) > self.env.cfg.PADDING+1:
                     obs, reward, done, _, info = self.env.step([0, self.step_y, 0])
-                    yield obs
+                    yield obs, info
                 else:
                     break
             print(f'length of rewards: {len(self.rewards)}', f'number of steps: {self.steps}', 'total rewards: ', sum(self.rewards))
@@ -66,6 +66,8 @@ class KeyboardNavigator(Navigator):
             z -= 10
         elif key == ord('x'):
             z += 10
+        elif key == ord('o'):
+            x, y, z = 1000,1000,1000
         action = [x, y, z]
         return action
 
@@ -80,9 +82,17 @@ class KeyboardNavigator(Navigator):
                 obs, reward, done, _, info = self.env.step(action)
 
                 i = 0
-                yield obs
-            if action != [0, 0, 0]:
+                yield obs, info
+            if action != [0, 0, 0] and action != [1000,1000,1000]:
                 obs, reward, done, _, info = self.env.step(action)
                 logging.info(f'location after step {info}')
-                yield obs
+                yield obs, info
+            if action == [1000,1000,1000]:
+                info = self.env.info_list[-1]  # Retrieve the last info from the list
+                x1, y1, x2, y2 = 10, 10, 20, 20  # this is a dummy detection as placeholder for bbox
+                info['detections'] = [x1, y1, x2, y2]
+                logging.info(f'created dummy detection at: {info["detections"]}')
+                self.env.info_list[-1] = info  # Update the last info in the list
+
+                yield obs, info
         self.env.close()

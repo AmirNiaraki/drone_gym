@@ -19,6 +19,7 @@ import time
 from math import acos, ceil, degrees, radians, sqrt, tan
 from sys import exit
 from threading import Thread
+import json
 
 import cv2
 import gymnasium
@@ -56,7 +57,7 @@ class droneEnv(gymnasium.Env):
     ):
         # super(droneEnv, self).__init__()
         super().__init__()
-        self.cfg = Configs()
+        self.cfg = Configs(img_path)
         self.observation_mode = observation_mode
         self.action_mode = action_mode
         self.render = render
@@ -71,6 +72,9 @@ class droneEnv(gymnasium.Env):
         self.location = self.cfg.init_location
         self.path = []  # list of all locations visited by the drone
         self.path.append(self.location)
+        #TODO: depricate path and infer it from the flight info log
+        self.info_list=[]
+
         logging.info(f"initial location of drone: {self.location}")
 
         if self.cfg.load_from_geotiff == True:
@@ -80,6 +84,7 @@ class droneEnv(gymnasium.Env):
         if self.cfg.create_explored_map:
             self.explored_map = self.world.copy()
             self.explored_map.fill(0)
+            
         self.mask = np.zeros((self.world.shape[0], self.world.shape[1]), dtype=np.uint8)
         self.drone_data = {
             "step_count": [],
@@ -150,6 +155,7 @@ class droneEnv(gymnasium.Env):
         self.imager_thread_name = threading.current_thread()
         print("top of the thread")
         self.world_img = self.world
+        # print("world image shape: ", self.world_img.shape)
 
         while self.done == False:
             self.visible_x = ceil(tan(radians(self.cfg.FOV_X)) * 2 * self.location[2])
@@ -218,7 +224,7 @@ class droneEnv(gymnasium.Env):
                 self.drone_data["world_y2"].append(world_y2)
                 # print(self.drone_data)
 
-            cv2.imshow("mask", self.mask * 255)
+            # cv2.imshow("mask", self.mask * 255)
             self.frame = resized
             self.current_boxes = []
 
@@ -277,7 +283,12 @@ class droneEnv(gymnasium.Env):
         if self.action_mode == "disc":
             self.move_by_tile()
         self.path.append(self.location)
-        info = {self.location}
+        info = {
+            "location": self.location,
+            "boundaries": self.boundaries,
+            "detections": self.current_boxes,
+        }
+        self.info_list.append(info)
 
         if self.cfg.show_location:
             logging.info(f"location after step {info}")
@@ -292,11 +303,11 @@ class droneEnv(gymnasium.Env):
             time.sleep(self.cfg.sleep_time) if self.cfg.sleep_time > 0 else None
 
         # exit()
-        _score = self.fetch_anomaly()
+        # _score = self.fetch_anomaly()
+        _score=0
         # if _score>0:
         #     print('step',self.step_count, '\n this reward: ', _score, '\n')
         self.reward += _score
-        # self.reward+=self.fetch_anomaly()
         self.total_reward += self.reward
         self.step_count += 1
         # print('STEP MTHD, count: ', self.step_count)
@@ -509,27 +520,65 @@ class droneEnv(gymnasium.Env):
         time.sleep(0.1)
         self.imager_thread_name.join()
         cv2.destroyAllWindows()
-
+        self.dump_step_history_json()
         if self.cfg.save_map_to_file and self.cfg.create_explored_map:
-            logging.info(
-                f"Adding the path to image and saving to file. Path length: {len(self.path)}"
+            self.map_of_detections()
+            self.show_write_explored_map()
+
+
+
+    def dump_step_history_json(self, filename=None):
+        # saving the list of info with time stamp
+        if filename == None:
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            filename = f"flight_info_{timestamp}.json"
+        #checking if flight_logs/ exists then dumpint there
+        if not os.path.exists('flight_logs'):
+            os.makedirs('flight_logs')
+        filename = os.path.join('flight_logs',filename)
+        logging.info(f"Saving flight info to {filename}")
+        # dumping the json file
+        with open(filename, "w") as f:
+            json.dump(self.info_list, f)
+
+    def show_write_explored_map(self):
+        logging.info(
+            f"Adding the path to image and saving to file. Path length: {len(self.path)}"
+        )
+        for i in range(1, len(self.path)):
+            self.explored_map = cv2.line(
+                self.explored_map,
+                tuple(self.path[i - 1][:2]),
+                tuple(self.path[i][:2]),
+                (255, 255, 0),
+                3,
             )
-            for i in range(1, len(self.path)):
-                self.explored_map = cv2.line(
-                    self.explored_map,
-                    tuple(self.path[i - 1][:2]),
-                    tuple(self.path[i][:2]),
-                    (255, 255, 0),
-                    3,
-                )
+        output_name = self.image_path.split(".")[0] + "_path.png"
+        # showing the output image for 5 seconds before saving to file
+        cv2.imshow(" Resulted Path", self.explored_map)
+        cv2.waitKey(5000)
+        cv2.destroyAllWindows()
+        cv2.imwrite(output_name, self.explored_map)
+    
+    def map_of_detections(self):
+        for dict in self.info_list:
+            if len(dict["detections"]) > 0:
+                
+                    x1, y1, x2, y2 = dict["detections"][:4]
+                    X1= x1 +  dict["boundaries"][2]
+                    Y1= y1 +  dict["boundaries"][0]
+                    X2= x2 +  dict["boundaries"][2]
+                    Y2= y2 +  dict["boundaries"][0]
+                    self.explored_map = cv2.rectangle(
+                        self.explored_map, (X1, Y1), (X2, Y2), (0, 0, 255), 2
+                    )
+        output_name = self.image_path.split(".")[0] + "_detections.png"
+        cv2.imwrite(output_name, self.explored_map)
+        logging.info(f"Map of detections saved to {output_name}")
 
-            output_name = self.image_path.split(".")[0] + "_path.png"
-            # showing the output image for 5 seconds before saving to file
-            cv2.imshow(" Resulted Path", self.explored_map)
-            cv2.waitKey(5000)
-            cv2.destroyAllWindows()
-            cv2.imwrite(output_name, self.explored_map)
 
+
+        
     ### method receives frame as np array adds a column the end that represent battery level
     def concat_battery(self, input_frame):
         full_pixels_count = int(self.cfg.FRAME_H * self.battery / 100)

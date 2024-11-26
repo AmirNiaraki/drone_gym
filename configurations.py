@@ -11,10 +11,10 @@ from math import tan, radians, ceil
 
 class Configs:
 
-    def __init__(self):
+    def __init__(self, geotiff_path=None):
         self.load_from_geotiff=True # if false then the world is generated with random seeds
         # self.geotiff_path='2021-7-13-padded.png'
-        self.geotiff_path='images/resize.png'
+        self.geotiff_path=geotiff_path # could be None
 
         self.STATES_X=400
         self.STATES_Y=100
@@ -23,18 +23,18 @@ class Configs:
 
 # TODO: define aspect ratio from tan(FOV) and find the frame height based on AR and frame width
 # basicaly frame H/W ~ Tan(FOV_Y)/Tan(FOV_X) 
-        self.min_flight_height=400
-        self.max_flight_height=400
+        self.min_flight_height=60
+        self.max_flight_height=160
 
         self.FOV_X=60/2 #degrees for halve of the field of view horizontaly
         self.FOV_Y=60/2 #degrees for halve of the field of view verticaly
-        self.FRAME_W=1280 #unit: pixels
-        self.FRAME_H=1280 #unit: pixels
+        self.FRAME_W=100 #unit: pixels
+        self.FRAME_H=100 #unit: pixels
         self.PADDING = self.calculate_padding(max(self.FOV_X,self.FOV_Y), self.max_flight_height)
         self.init_location=(self.PADDING,self.PADDING,self.min_flight_height)
         self.random_init_location=False
         
-        if self.load_from_geotiff: ### this is where we load the world from the images dimensions
+        if self.load_from_geotiff and self.geotiff_path is not None: ### this is where we load the world from the images dimensions
                 import cv2
                 img=cv2.imread(self.geotiff_path)
                 self.wolrd_size_including_padding=[img.shape[1],img.shape[0]] 
@@ -43,7 +43,7 @@ class Configs:
                 self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
                 self.WORLD_ZS=[self.min_flight_height,self.max_flight_height]
-        else: # determine wold size HERE
+        else: # determine wold size HERE or the default will be the size
                 self.wolrd_size_including_padding=[2000,500]
                 self.WORLD_XS=[self.PADDING, self.wolrd_size_including_padding[0]-self.PADDING]
                 self.WORLD_YS=[self.PADDING, self.wolrd_size_including_padding[1]-self.PADDING]
@@ -66,8 +66,8 @@ class Configs:
         ### how many steps per episode
         self.MAX_STEPS=1000000
         self.sleep_time=0
-        self.create_explored_map=False
-        self.save_map_to_file=False
+        self.create_explored_map=True
+        self.save_map_to_file=True
         self.show_location=True
         
     def calculate_padding(self, fov_degrees, drone_height):

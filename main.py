@@ -40,13 +40,16 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
         navigator = KeyboardNavigator(env)
     # for inference
     model = Inferer(env.cfg, model_type)
-    for obs in navigator.navigate():
+    for obs, info in navigator.navigate():
         # Process the observation
         # logging.info(f"Observation: {obs.shape}")
-        boxes = model.infer(obs)
-        if boxes is not []:
-            logging.info(f"Detected {boxes}")
-        env.update_boxes(boxes) # allows drawing of boxes on the image
+        # boxes = model.infer(obs)
+        logging.info(f"info: {info}")
+        pass
+
+        # if boxes is not []:
+        #     logging.info(f"Detected {boxes}")
+        # env.update_boxes(boxes) # allows drawing of boxes on the image
 
         # cv2.imwrite('images/observation.jpg', obs)
 
