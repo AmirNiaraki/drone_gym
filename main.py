@@ -33,6 +33,17 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
     logging.info(f"Using image: {image_path}")
     logging.info(f"Using navigator: {navigator_type}")
     env = initialize_env(image_path, show_location)
+    drone_data = {
+        "step_count": [],
+        "battery_levels": [],
+        "anomaly_areas": [],
+        "percentages_of_anomaly": [],
+        "locations": [],
+        "world_x1": [],
+        "world_y1": [],
+        "world_x2": [],
+        "world_y2": [],
+    }
     # for navigation
     if navigator_type == 'complete':
         navigator = CompleteCoverageNavigator(env)
@@ -42,16 +53,53 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
     model = Inferer(env.cfg, model_type)
     for obs, info in navigator.navigate():
         # Process the observation
-        # logging.info(f"Observation: {obs.shape}")
-        # boxes = model.infer(obs)
+        logging.info(f"Observation: {obs.shape}")
         logging.info(f"info: {info}")
-        pass
+
+        log_location(model, obs, info, drone_data)
+        # boxes = model.infer(obs)
+        # env.update_boxes(boxes) # allows drawing of boxes on the image
 
         # if boxes is not []:
         #     logging.info(f"Detected {boxes}")
         # env.update_boxes(boxes) # allows drawing of boxes on the image
 
         # cv2.imwrite('images/observation.jpg', obs)
+
+def log_location(model, obs, info, drone_data):
+    # get the needed information from env
+    location = info["location"]
+    boundaries = info["boundaries"]
+    scale_x = info["scale_x"]
+    scale_y = info["scale_y"]
+    boxes = model.infer(obs)
+    step_count = info["step_count"]
+    battery = info["battery_levels"]
+
+    # TODO: need to check if there is any conversion between the
+    # inference frame and the big frame
+    for box in boxes:
+        x1, y1, x2, y2 = map(int, box[:4])
+
+        # Convert to world coordinates
+        world_x1 = int(x1 * scale_x + boundaries[2])
+        world_y1 = int(y1 * scale_y + boundaries[0])
+        world_x2 = int(x2 * scale_x + boundaries[2])
+        world_y2 = int(y2 * scale_y + boundaries[0])
+
+        logging.info(f"Locations {world_x1, world_y1, world_x2, world_y2}")
+        logging.info(f"Original locations {x1, y1, x2, y2}")
+
+        # Store values in the evaluation dictionary
+        drone_data["step_count"].append(step_count)
+        drone_data["battery_levels"].append(battery)
+        drone_data["locations"].append(location)
+
+        # Save world coordinates
+        drone_data["world_x1"].append(world_x1)
+        drone_data["world_y1"].append(world_y1)
+        drone_data["world_x2"].append(world_x2)
+        drone_data["world_y2"].append(world_y2)
 
 def initialize_env(input_map, show_location):
     env = droneEnv(observation_mode='cont', action_mode='cont', render=True, img_path=input_map)

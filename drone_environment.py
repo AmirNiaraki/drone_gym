@@ -183,45 +183,45 @@ class droneEnv(gymnasium.Env):
                 # print('wrote images/crop.png for sanity check')
             resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
 
-            # TODO: need to check if there is any conversion between the
-            # inference frame and the big frame
-            for box in self.current_boxes:
-                logging.info(f"Box: {self.current_boxes}")
-                # Calculate scaling factors
-                scale_x = self.visible_x / self.cfg.FRAME_W
-                scale_y = self.visible_y / self.cfg.FRAME_H
-
-                x1, y1, x2, y2 = map(int, box[:4])
-
-                # Convert to world coordinates
-                world_x1 = int(x1 * scale_x + self.boundaries[2])
-                world_y1 = int(y1 * scale_y + self.boundaries[0])
-                world_x2 = int(x2 * scale_x + self.boundaries[2])
-                world_y2 = int(y2 * scale_y + self.boundaries[0])
-
-                self.mask[world_y1:world_y2, world_x1:world_x2] = 1
-                area_of_anomaly = np.sum(self.mask)
-                percentage_of_anomaly = (
-                    area_of_anomaly / (self.cfg.FRAME_H * self.cfg.FRAME_W)
-                ) * 100
-                logging.info(f"Current area of anomaly {area_of_anomaly}")
-                logging.info(f"Current percentage of anomaly {percentage_of_anomaly}")
-                logging.info(f"Locations {world_x1, world_y1, world_x2, world_y2}")
-                logging.info(f"Original locations {x1, y1, x2, y2}")
-
-
-                # Store values in the evaluation dictionary
-                self.drone_data["step_count"].append(self.step_count)
-                self.drone_data["battery_levels"].append(self.battery)
-                self.drone_data["anomaly_areas"].append(area_of_anomaly)
-                self.drone_data["percentages_of_anomaly"].append(percentage_of_anomaly)
-                self.drone_data["locations"].append(self.location)
-
-                # Save world coordinates
-                self.drone_data["world_x1"].append(world_x1)
-                self.drone_data["world_y1"].append(world_y1)
-                self.drone_data["world_x2"].append(world_x2)
-                self.drone_data["world_y2"].append(world_y2)
+            # # TODO: need to check if there is any conversion between the
+            # # inference frame and the big frame
+            # for box in self.current_boxes:
+            #     logging.info(f"Box: {self.current_boxes}")
+            #     # Calculate scaling factors
+            #     scale_x = self.visible_x / self.cfg.FRAME_W
+            #     scale_y = self.visible_y / self.cfg.FRAME_H
+            #
+            #     x1, y1, x2, y2 = map(int, box[:4])
+            #
+            #     # Convert to world coordinates
+            #     world_x1 = int(x1 * scale_x + self.boundaries[2])
+            #     world_y1 = int(y1 * scale_y + self.boundaries[0])
+            #     world_x2 = int(x2 * scale_x + self.boundaries[2])
+            #     world_y2 = int(y2 * scale_y + self.boundaries[0])
+            #
+            #     self.mask[world_y1:world_y2, world_x1:world_x2] = 1
+            #     area_of_anomaly = np.sum(self.mask)
+            #     percentage_of_anomaly = (
+            #         area_of_anomaly / (self.cfg.FRAME_H * self.cfg.FRAME_W)
+            #     ) * 100
+            #     logging.info(f"Current area of anomaly {area_of_anomaly}")
+            #     logging.info(f"Current percentage of anomaly {percentage_of_anomaly}")
+            #     logging.info(f"Locations {world_x1, world_y1, world_x2, world_y2}")
+            #     logging.info(f"Original locations {x1, y1, x2, y2}")
+            #
+            #
+            #     # Store values in the evaluation dictionary
+            #     self.drone_data["step_count"].append(self.step_count)
+            #     self.drone_data["battery_levels"].append(self.battery)
+            #     self.drone_data["anomaly_areas"].append(area_of_anomaly)
+            #     self.drone_data["percentages_of_anomaly"].append(percentage_of_anomaly)
+            #     self.drone_data["locations"].append(self.location)
+            #
+            #     # Save world coordinates
+            #     self.drone_data["world_x1"].append(world_x1)
+            #     self.drone_data["world_y1"].append(world_y1)
+            #     self.drone_data["world_x2"].append(world_x2)
+            #     self.drone_data["world_y2"].append(world_y2)
                 # print(self.drone_data)
 
             # cv2.imshow("mask", self.mask * 255)
@@ -286,7 +286,10 @@ class droneEnv(gymnasium.Env):
         info = {
             "location": self.location,
             "boundaries": self.boundaries,
-            "detections": self.current_boxes,
+            "scale_x": self.visible_x / self.cfg.FRAME_W,
+            "scale_y": self.visible_y / self.cfg.FRAME_H,
+            "step_count": self.step_count,
+            "battery_levels": self.battery,
         }
         self.info_list.append(info)
 
