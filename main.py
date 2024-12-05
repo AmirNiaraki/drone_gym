@@ -33,7 +33,7 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
     logging.info(f"Using image: {image_path}")
     logging.info(f"Using navigator: {navigator_type}")
     env = initialize_env(image_path, show_location)
-    drone_data = {
+    drone_info_dict = {
         "step_count": [],
         "battery_levels": [],
         "anomaly_areas": [],
@@ -56,7 +56,7 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
         logging.info(f"Observation: {obs.shape}")
         logging.info(f"info: {info}")
 
-        log_location(model, obs, info, drone_data)
+        log_location(model, obs, info, drone_info_dict)
         # boxes = model.infer(obs)
         # env.update_boxes(boxes) # allows drawing of boxes on the image
 
@@ -66,7 +66,7 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
 
         # cv2.imwrite('images/observation.jpg', obs)
 
-def log_location(model, obs, info, drone_data):
+def log_location(model, obs, info, drone_info_dict):
     # get the needed information from env
     location = info["location"]
     boundaries = info["boundaries"]
@@ -91,15 +91,16 @@ def log_location(model, obs, info, drone_data):
         logging.info(f"Original locations {x1, y1, x2, y2}")
 
         # Store values in the evaluation dictionary
-        drone_data["step_count"].append(step_count)
-        drone_data["battery_levels"].append(battery)
-        drone_data["locations"].append(location)
+        drone_info_dict["step_count"].append(step_count)
+        drone_info_dict["battery_levels"].append(battery)
+        drone_info_dict["locations"].append(location)
 
         # Save world coordinates
-        drone_data["world_x1"].append(world_x1)
-        drone_data["world_y1"].append(world_y1)
-        drone_data["world_x2"].append(world_x2)
-        drone_data["world_y2"].append(world_y2)
+        drone_info_dict["world_x1"].append(world_x1)
+        drone_info_dict["world_y1"].append(world_y1)
+        drone_info_dict["world_x2"].append(world_x2)
+        drone_info_dict["world_y2"].append(world_y2)
+    logging.info(f"Drone data: {drone_info_dict}")
 
 def initialize_env(input_map, show_location):
     env = droneEnv(observation_mode='cont', action_mode='cont', render=True, img_path=input_map)
