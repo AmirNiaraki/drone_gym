@@ -19,7 +19,7 @@ from model_loader import ModelConfig
 
 
 class Inferer:
-    def __init__(self, cfg, model_type="retina"):
+    def __init__(self, cfg, model_type="low_fidelity"):
         self.cfg = cfg
         self.model_type = model_type
         if model_type == "low_fidelity":

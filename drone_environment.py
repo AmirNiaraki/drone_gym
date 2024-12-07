@@ -479,19 +479,21 @@ class droneEnv(gymnasium.Env):
             f"Adding the path to image and saving to file. Path length: {len(self.path)}"
         )
         for i in range(1, len(self.path)):
+            start_point = tuple(map(int, self.path[i - 1][:2]))
+            end_point = tuple(map(int, self.path[i][:2]))
             self.explored_map = cv2.line(
                 self.explored_map,
-                tuple(self.path[i - 1][:2]),
-                tuple(self.path[i][:2]),
+                start_point,
+                end_point,
                 (255, 255, 0),
                 3,
             )
             if self.path[i - 1][2] > self.path[i][2]:
                 self.explored_map = cv2.circle(
-                    self.explored_map, tuple(self.path[i][:2]), 5, (255, 0, 0), -1)
+                    self.explored_map, end_point, 5, (255, 0, 0), -1)
             elif self.path[i - 1][2] < self.path[i][2]:
                 self.explored_map = cv2.circle(
-                    self.explored_map, tuple(self.path[i][:2]), 5, (0, 255, 0), -1)
+                    self.explored_map, end_point, 5, (0, 255, 0), -1)
         output_name = self.image_path.split(".")[0] + "_path.png"
         # showing the output image for 5 seconds before saving to file
         cv2.imshow(" Resulted Path", self.explored_map)

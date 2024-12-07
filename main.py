@@ -20,7 +20,7 @@ import numpy as np
 
 from drone_environment import droneEnv
 from inference import Inferer
-from navigator import CompleteCoverageNavigator, KeyboardNavigator
+from navigator import CompleteCoverageNavigator, KeyboardNavigator, HierarchicalNavigator
 
 # from CCdrone import CCdrone
 
@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument(
         "--navigator",
         type=str,
-        choices=["complete", "keyboard"],
+        choices=["complete", "keyboard", "hierarchical"],
         default="keyboard",
         help="Type of navigator to use",
     )
@@ -44,7 +44,7 @@ def parse_args():
         "--detector",
         type=str,
         choices=["retina", "low_fidelity", "double_clustering"],
-        default="keyboard",
+        default="low_fidelity",
         help="Type of inference model to use for object localization",
     )
     parser.add_argument(
@@ -72,14 +72,16 @@ def main(image_path, navigator_type, show_location=False, model_type="retina"):
     # for navigation
     if navigator_type == "complete":
         navigator = CompleteCoverageNavigator(env)
-    else:
+    elif navigator_type == "keyboard":
         navigator = KeyboardNavigator(env)
+    elif navigator_type == "hierarchical":
+        navigator = HierarchicalNavigator(env)
     # for inference
     model = Inferer(env.cfg, model_type)
     for obs, info in navigator.navigate():
         # Process the observation
-        logging.info(f"Observation: {obs.shape}")
-        logging.info(f"info: {info}")
+        # logging.info(f"Observation: {obs.shape}")
+        # logging.info(f"info: {info}")
 
         log_location(model, obs, info, drone_info_dict)
 
@@ -126,7 +128,7 @@ def log_location(model, obs, info, drone_info_dict):
         with open("data_info.json", "w") as file:
             json.dump(drone_info_dict, file, indent=4)
 
-    logging.info(f"Drone data: {drone_info_dict}")
+    # logging.info(f"Drone data: {drone_info_dict}")
 
 
 def initialize_env(input_map, show_location):

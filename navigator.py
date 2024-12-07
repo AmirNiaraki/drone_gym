@@ -3,12 +3,107 @@ import time
 import numpy as np
 import cv2  # Add this import for keyboard input
 import logging
+import math
 class Navigator:
     def __init__(self, env):
         self.env = env
 
     def navigate(self):
         raise NotImplementedError("Subclasses should implement this!")
+
+
+class HierarchicalNavigator(Navigator):
+    def __init__(self, env):
+        super().__init__(env)
+        self.phase='sampling' # sampling and CCPP (Complete Coverage Path Planning)
+        self.edge_discretization_segments = 2 #number of devides per edge (so 2 for parameter means the image is divided into 4)
+        self.sampling_velocity=5 #m/s   
+
+    def generate_planar_sampling_waypoints(self):
+        # Generate (x,y) waypoints for sampling phase
+        logging.info(f'Deviding the world into {self.edge_discretization_segments*self.edge_discretization_segments} segments ')
+        segment_width=self.env.cfg.wolrd_size_including_padding[0]/self.edge_discretization_segments
+        segment_height=self.env.cfg.wolrd_size_including_padding[1]/self.edge_discretization_segments
+        logging.info(f'segment width: {segment_width}, segment height: {segment_height}')
+        waypoints=[]
+        for i in range(self.edge_discretization_segments):
+            for j in range(self.edge_discretization_segments):
+                waypoints.append((j*segment_width+segment_width/2,i*segment_height+segment_height/2))           
+        return waypoints
+
+    def generate_3d_sampling_waypoints(self, waypoints_2d):
+        # Generate (x,y,z) waypoints for sampling phase
+        waypoints_3d=[]
+        height_fraction_counts = len(waypoints_2d)
+        logging.info(f'sampling at {height_fraction_counts} different heights')
+        height_interval = int((self.env.cfg.WORLD_ZS[1]-self.env.cfg.WORLD_ZS[0])/height_fraction_counts)
+        for i in range(height_fraction_counts):
+            waypoints_3d.append((waypoints_2d[i][0],waypoints_2d[i][1],self.env.cfg.WORLD_ZS[0]+i*height_interval))
+        logging.info(f'waypoints_3d: {waypoints_3d}')
+        return waypoints_3d , height_interval          
+        
+    def calculate_distance(self, point1, point2):
+        '''
+        The points given in the form of (x,y,z)
+        the distance is euclidean distance as scalar
+        '''
+        distance=math.sqrt((point1[0]-point2[0])**2+(point1[1]-point2[1])**2+(point1[2]-point2[2])**2)
+        # return np.linalg.norm(np.array(point1)-np.array(point2))
+        return distance
+
+    def find_direction(self, point1, point2):
+        '''
+        The points given in the form of (x,y,z)
+        the direction is a unit vector pointing from point1 to point2 in 2D
+        '''
+        distance=abs(self.calculate_distance(point1,point2))
+        dir_x=(point2[0]-point1[0])/distance
+        dir_y=(point2[1]-point1[1])/distance
+        unit_vector=[dir_x,dir_y,0]
+        return unit_vector
+
+    def navigate(self):
+        
+        if self.phase == 'sampling':
+            waypoints_2d=self.generate_planar_sampling_waypoints()
+            way_points_3d, height_interval=self.generate_3d_sampling_waypoints(waypoints_2d)
+
+            self.env.location = (self.env.cfg.init_location[0], self.env.cfg.init_location[1], self.env.cfg.WORLD_ZS[0])
+            for i in range(len(way_points_3d)):
+                logging.info(f'current location: {self.env.location} going to wardd way point at {way_points_3d[i]}')
+                direction=self.find_direction(self.env.location,way_points_3d[i])
+                logging.info(f'direction: {direction}')
+                time.sleep(5)
+
+                while True and self.env.done==False:
+                    distance=self.calculate_distance(self.env.location,way_points_3d[i])
+                    logging.info(f'distance: {distance}')
+                    if int(distance)<=10:
+                        break
+                    else:
+                        # move towards the waypoint
+                        x=direction[0]*self.sampling_velocity
+                        y=direction[1]*self.sampling_velocity
+                        z=0
+                        obs, reward, done, _, info = self.env.step([x, y, z])
+                        logging.info(f'location after step {info}')
+                        yield obs, info
+                logging.info(f'waypoint number {i} reached, changing height by {height_interval}')
+                obs, reward, done, _, info = self.env.step([0, 0, height_interval])
+            logging.info('All waypoints reached; end of sampling phase')
+            self.env.close()
+
+
+
+        elif self.phase == 'CCPP':
+            pass
+        else:
+            raise ValueError('Invalid phase')
+
+
+
+
+
 
 class CompleteCoverageNavigator(Navigator):
     def __init__(self, env):
