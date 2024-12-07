@@ -57,14 +57,6 @@ def main(image_path, navigator_type, show_location=False, model_type='retina'):
         logging.info(f"info: {info}")
 
         log_location(model, obs, info, drone_info_dict)
-        # boxes = model.infer(obs)
-        # env.update_boxes(boxes) # allows drawing of boxes on the image
-
-        # if boxes is not []:
-        #     logging.info(f"Detected {boxes}")
-        # env.update_boxes(boxes) # allows drawing of boxes on the image
-
-        # cv2.imwrite('images/observation.jpg', obs)
 
 def log_location(model, obs, info, drone_info_dict):
     # get the needed information from env
@@ -100,6 +92,7 @@ def log_location(model, obs, info, drone_info_dict):
         drone_info_dict["world_y1"].append(world_y1)
         drone_info_dict["world_x2"].append(world_x2)
         drone_info_dict["world_y2"].append(world_y2)
+
     logging.info(f"Drone data: {drone_info_dict}")
 
 def initialize_env(input_map, show_location):
