@@ -64,16 +64,13 @@ class droneEnv(gymnasium.Env):
 
         self.image_path = img_path if img_path != None else self.cfg.geotiff_path
 
-        # used to draw the boxes in the big frame
-        self.current_boxes = []
-
         # self.world=None
 
         self.location = self.cfg.init_location
         self.path = []  # list of all locations visited by the drone
         self.path.append(self.location)
-        #TODO: depricate path and infer it from the flight info log
-        self.info_list=[]
+        # TODO: depricate path and infer it from the flight info log
+        self.info_list = []
 
         logging.info(f"initial location of drone: {self.location}")
 
@@ -84,21 +81,6 @@ class droneEnv(gymnasium.Env):
         if self.cfg.create_explored_map:
             self.explored_map = self.world.copy()
             self.explored_map.fill(0)
-            
-        self.mask = np.zeros((self.world.shape[0], self.world.shape[1]), dtype=np.uint8)
-        self.drone_data = {
-            "step_count": [],
-            "battery_levels": [],
-            "anomaly_areas": [],
-            "percentages_of_anomaly": [],
-            "locations": [],
-            "world_x1": [],
-            "world_y1": [],
-            "world_x2": [],
-            "world_y2": [],
-        }
-
-        # print(type(self.world), self.world.shape)
 
         ### wind field = (wind_x, wind_y) m/s. with x pointing at east, and positive y pointing at south
         self.wind = (3.5, 0)
@@ -179,64 +161,12 @@ class droneEnv(gymnasium.Env):
                     self.boundaries[0] : self.boundaries[1],
                     self.boundaries[2] : self.boundaries[3],
                 ] = crop
-                # cv2.imwrite('images/crop.png',crop)
-                # print('wrote images/crop.png for sanity check')
             resized = cv2.resize(crop, (self.cfg.FRAME_W, self.cfg.FRAME_H))
 
-            # # TODO: need to check if there is any conversion between the
-            # # inference frame and the big frame
-            # for box in self.current_boxes:
-            #     logging.info(f"Box: {self.current_boxes}")
-            #     # Calculate scaling factors
-            #     scale_x = self.visible_x / self.cfg.FRAME_W
-            #     scale_y = self.visible_y / self.cfg.FRAME_H
-            #
-            #     x1, y1, x2, y2 = map(int, box[:4])
-            #
-            #     # Convert to world coordinates
-            #     world_x1 = int(x1 * scale_x + self.boundaries[2])
-            #     world_y1 = int(y1 * scale_y + self.boundaries[0])
-            #     world_x2 = int(x2 * scale_x + self.boundaries[2])
-            #     world_y2 = int(y2 * scale_y + self.boundaries[0])
-            #
-            #     self.mask[world_y1:world_y2, world_x1:world_x2] = 1
-            #     area_of_anomaly = np.sum(self.mask)
-            #     percentage_of_anomaly = (
-            #         area_of_anomaly / (self.cfg.FRAME_H * self.cfg.FRAME_W)
-            #     ) * 100
-            #     logging.info(f"Current area of anomaly {area_of_anomaly}")
-            #     logging.info(f"Current percentage of anomaly {percentage_of_anomaly}")
-            #     logging.info(f"Locations {world_x1, world_y1, world_x2, world_y2}")
-            #     logging.info(f"Original locations {x1, y1, x2, y2}")
-            #
-            #
-            #     # Store values in the evaluation dictionary
-            #     self.drone_data["step_count"].append(self.step_count)
-            #     self.drone_data["battery_levels"].append(self.battery)
-            #     self.drone_data["anomaly_areas"].append(area_of_anomaly)
-            #     self.drone_data["percentages_of_anomaly"].append(percentage_of_anomaly)
-            #     self.drone_data["locations"].append(self.location)
-            #
-            #     # Save world coordinates
-            #     self.drone_data["world_x1"].append(world_x1)
-            #     self.drone_data["world_y1"].append(world_y1)
-            #     self.drone_data["world_x2"].append(world_x2)
-            #     self.drone_data["world_y2"].append(world_y2)
-                # print(self.drone_data)
-
-            # cv2.imshow("mask", self.mask * 255)
             self.frame = resized
-            self.current_boxes = []
 
             if self.done == True:
-                # print('done is true instide update_frame() trying to join')
                 break
-
-        # print('Frame Update stopping...  ',  self.imager_thread_name)
-
-    def update_boxes(self, boxes):
-        """Used to update the boxes in the frame"""
-        self.current_boxes = boxes
 
     def fetch_frame(self):
         return self.frame
@@ -568,19 +498,19 @@ class droneEnv(gymnasium.Env):
         cv2.waitKey(5000)
         cv2.destroyAllWindows()
         cv2.imwrite(output_name, self.explored_map)
-    
+
+
     def map_of_detections(self):
-        for dict in self.info_list:
-            if len(dict["detections"]) > 0:
-                
-                    x1, y1, x2, y2 = dict["detections"][:4]
-                    X1= x1 +  dict["boundaries"][2]
-                    Y1= y1 +  dict["boundaries"][0]
-                    X2= x2 +  dict["boundaries"][2]
-                    Y2= y2 +  dict["boundaries"][0]
-                    self.explored_map = cv2.rectangle(
-                        self.explored_map, (X1, Y1), (X2, Y2), (0, 0, 255), 2
-                    )
+        for element in self.info_list:
+            if len(element.get("detections", [])) > 0:
+                x1, y1, x2, y2 = dict["detections"][:4]
+                X1 = x1 + dict["boundaries"][2]
+                Y1 = y1 + dict["boundaries"][0]
+                X2 = x2 + dict["boundaries"][2]
+                Y2 = y2 + dict["boundaries"][0]
+                self.explored_map = cv2.rectangle(
+                    self.explored_map, (X1, Y1), (X2, Y2), (0, 0, 255), 2
+                )
         output_name = self.image_path.split(".")[0] + "_detections.png"
         cv2.imwrite(output_name, self.explored_map)
         logging.info(f"Map of detections saved to {output_name}")
