@@ -95,7 +95,7 @@ def main(image_path, navigator_type, show_location=False, model_type="retina", i
             log_location(model, obs, info, drone_info_dict)
     else:
         # Open and read the JSON file
-        with open("data_info2.json", "r") as file:
+        with open("data_info.json", "r") as file:
             drone_info_dict = json.load(file)
         post_process(drone_info_dict)
 
