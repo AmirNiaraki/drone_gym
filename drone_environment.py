@@ -235,19 +235,10 @@ class droneEnv(gymnasium.Env):
             self.renderer()
             time.sleep(self.cfg.sleep_time) if self.cfg.sleep_time > 0 else None
 
-        # exit()
-        # _score = self.fetch_anomaly()
         _score=0
-        # if _score>0:
-        #     print('step',self.step_count, '\n this reward: ', _score, '\n')
         self.reward += _score
         self.total_reward += self.reward
         self.step_count += 1
-        # print('STEP MTHD, count: ', self.step_count)
-
-        # if self.fetch_anomaly()>0:
-        #     print('step',self.step_count, '\n this reward: ', self.reward, '\n')
-        #     print('Total rewards is:', self.total_reward)
 
         self.reward = float(self.reward)
 
@@ -272,9 +263,7 @@ class droneEnv(gymnasium.Env):
             self.display_info()
         if self.cfg.MAX_STEPS < self.step_count:
             self.done = True
-        # print('step count: ', self.step_count)
-        # print(' x size on world: ', self.visible_x)
-        # print( 'y size on world: ', self.visible_y)
+
         return (
             observation,
             self.reward,

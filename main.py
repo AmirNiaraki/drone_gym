@@ -20,7 +20,11 @@ import numpy as np
 
 from drone_environment import droneEnv
 from inference import Inferer
-from navigator import CompleteCoverageNavigator, KeyboardNavigator, HierarchicalNavigator
+from navigator import (
+    CompleteCoverageNavigator,
+    HierarchicalNavigator,
+    KeyboardNavigator,
+)
 
 # from CCdrone import CCdrone
 
@@ -53,37 +57,124 @@ def parse_args():
         default=False,
         help="Print out the location of the drone",
     )
+    parser.add_argument(
+        "--is_post_process",
+        help="Flag to determine if recordings are going to be unencoded.",
+        default=False,
+        action="store_true",
+    )
     return parser.parse_args()
 
 
-def main(image_path, navigator_type, show_location=False, model_type="retina"):
-    logging.info(f"Using image: {image_path}")
-    logging.info(f"Using navigator: {navigator_type}")
-    env = initialize_env(image_path, show_location)
-    drone_info_dict = {
-        "step_count": [],
-        "battery_levels": [],
-        "locations": [],
-        "world_x1": [],
-        "world_y1": [],
-        "world_x2": [],
-        "world_y2": [],
-    }
-    # for navigation
-    if navigator_type == "complete":
-        navigator = CompleteCoverageNavigator(env)
-    elif navigator_type == "keyboard":
-        navigator = KeyboardNavigator(env)
-    elif navigator_type == "hierarchical":
-        navigator = HierarchicalNavigator(env)
-    # for inference
-    model = Inferer(env.cfg, model_type)
-    for obs, info in navigator.navigate():
-        # Process the observation
-        # logging.info(f"Observation: {obs.shape}")
-        # logging.info(f"info: {info}")
+def main(image_path, navigator_type, show_location=False, model_type="retina", is_post_process=False):
+    if not is_post_process:
+        logging.info(f"Using image: {image_path}")
+        logging.info(f"Using navigator: {navigator_type}")
+        env = initialize_env(image_path, show_location)
+        drone_info_dict = {
+            "image_path": image_path,
+            "step_count": [],
+            "battery_levels": [],
+            "locations": [],
+            "world_x1": [],
+            "world_y1": [],
+            "world_x2": [],
+            "world_y2": [],
+        }
+        # for navigation
+        if navigator_type == "complete":
+            navigator = CompleteCoverageNavigator(env)
+        elif navigator_type == "keyboard":
+            navigator = KeyboardNavigator(env)
+        elif navigator_type == "hierarchical":
+            navigator = HierarchicalNavigator(env)
+        # for inference
+        model = Inferer(env.cfg, model_type)
+        for obs, info in navigator.navigate():
+            # Process the observation
+            log_location(model, obs, info, drone_info_dict)
+    else:
+        # Open and read the JSON file
+        with open("data_info2.json", "r") as file:
+            drone_info_dict = json.load(file)
+        post_process(drone_info_dict)
 
-        log_location(model, obs, info, drone_info_dict)
+
+def iou(box1, box2):
+    # Compute intersection
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+
+    # Compute areas
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+    # Compute union
+    union = area1 + area2 - intersection
+
+    # Return IoU
+    return intersection / union if union > 0 else 0
+
+
+def merge_overlapping_boxes(boxes, iou_threshold=0.5):
+    merged_boxes = []
+    while boxes:
+        # Take the first box
+        current_box = boxes.pop(0)
+        x1, y1, x2, y2 = current_box[:4]
+
+        # Group all overlapping boxes
+        overlapping_boxes = [current_box]
+        remaining_boxes = []
+        for box in boxes:
+            if iou(current_box[:4], box[:4]) >= iou_threshold:
+                overlapping_boxes.append(box)
+            else:
+                remaining_boxes.append(box)
+
+        # Merge overlapping boxes into one
+        x1 = min(box[0] for box in overlapping_boxes)
+        y1 = min(box[1] for box in overlapping_boxes)
+        x2 = max(box[2] for box in overlapping_boxes)
+        y2 = max(box[3] for box in overlapping_boxes)
+
+        # Append the merged box
+        merged_boxes.append([x1, y1, x2, y2])
+        boxes = remaining_boxes
+
+    return merged_boxes
+
+
+def post_process(drone_info):
+    step_count = drone_info["step_count"]
+    world_x1 = drone_info["world_x1"]
+    world_y1 = drone_info["world_y1"]
+    world_x2 = drone_info["world_x2"]
+    world_y2 = drone_info["world_y2"]
+    image_path = drone_info["image_path"]
+
+    # Combine bounding boxes with step counts into a single list
+    boxes = [
+        [world_x1[i], world_y1[i], world_x2[i], world_y2[i], step_count[i]]
+        for i in range(len(step_count))
+    ]
+
+    # Merge overlapping boxes
+    merged_boxes = merge_overlapping_boxes(boxes, iou_threshold=0.2)
+
+    # Open the image
+    img = cv2.imread(image_path)
+
+    # Draw the merged bounding boxes
+    for box in merged_boxes:
+        x1, y1, x2, y2 = box[:4]
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # Save the output image
+    cv2.imwrite("output.png", img)
 
 
 def log_location(model, obs, info, drone_info_dict):
@@ -128,8 +219,6 @@ def log_location(model, obs, info, drone_info_dict):
         with open("data_info.json", "w") as file:
             json.dump(drone_info_dict, file, indent=4)
 
-    # logging.info(f"Drone data: {drone_info_dict}")
-
 
 def initialize_env(input_map, show_location):
     env = droneEnv(
@@ -142,4 +231,4 @@ def initialize_env(input_map, show_location):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     args = parse_args()
-    main(args.image_path, args.navigator, args.show_location, args.detector)
+    main(args.image_path, args.navigator, args.show_location, args.detector, args.is_post_process)
