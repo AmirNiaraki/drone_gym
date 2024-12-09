@@ -33,6 +33,13 @@ def create_red_mask(img, red_value=100, tolerance=50):
     img[mask > 0] = [0, 0, 255]  # Paint those pixels completely red
     return img
 
+def create_black_mask(img, red_value=100, tolerance=50):
+    lower_bound = np.array([0, 0, red_value - tolerance])
+    upper_bound = np.array([255, 255, red_value + tolerance])
+    mask = cv2.inRange(img, lower_bound, upper_bound)
+    img[mask > 0] = [0, 0, 0]  # Paint those pixels completely black
+    return img
+
 def process_image(img_path, apply_mask=False):
     img = load_image(img_path)
     print(f"Original image shape: {img.shape}")
@@ -43,14 +50,16 @@ def process_image(img_path, apply_mask=False):
     print(f"Resized image saved at: {new_img_path}")
 
     if apply_mask:
-        red_masked_img = create_red_mask(resized_img)
-        red_masked_img_path = save_image(red_masked_img, img_path, suffix='_red_masked')
-        print(f"Red masked image saved at: {red_masked_img_path}")
+        # masked_img = create_red_mask(resized_img) #for coloring red
+        masked_img = create_black_mask(resized_img) #for coloring black
+        masked_img_path = save_image(masked_img, img_path, suffix='_red_masked')
+        print(f"Red masked image saved at: {masked_img_path}")
 
 def main(img_path, apply_mask=False):
     process_image(img_path, apply_mask)
 
 if __name__ == "__main__":
     img_path = 'images/field7_NDVI_resized.png'
+    
     # img_path = 'images/field7_RGB_resized.png'
     main(img_path, apply_mask=True)

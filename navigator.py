@@ -77,7 +77,7 @@ class HierarchicalNavigator(Navigator):
 
                 while True and self.env.done==False:
                     distance=self.calculate_distance(self.env.location,way_points_3d[i])
-                    logging.info(f'distance: {distance}')
+                    # logging.info(f'distance: {distance}')
                     if int(distance)<=10:
                         break
                     else:
@@ -86,22 +86,17 @@ class HierarchicalNavigator(Navigator):
                         y=direction[1]*self.sampling_velocity
                         z=0
                         obs, reward, done, _, info = self.env.step([x, y, z])
-                        logging.info(f'location after step {info}')
+                        # logging.info(f'location after step {info}')
                         yield obs, info
                 logging.info(f'waypoint number {i} reached, changing height by {height_interval}')
                 obs, reward, done, _, info = self.env.step([0, 0, height_interval])
             logging.info('All waypoints reached; end of sampling phase')
             self.env.close()
 
-
-
         elif self.phase == 'CCPP':
             pass
         else:
             raise ValueError('Invalid phase')
-
-
-
 
 
 
@@ -152,7 +147,7 @@ class CompleteCoverageNavigator(Navigator):
 class KeyboardNavigator(Navigator):
     def __init__(self, env):
         super().__init__(env)
-        self.step_size=50
+        self.step_size=100
 
     def keyboard_stepper(self, key):
         x, y, z = 0, 0, 0

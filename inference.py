@@ -68,6 +68,7 @@ class Inferer:
         logging.info(f"Number of black pixels: {black_pixels}")
         return black_pixels
 
+
     def write_sample_to_disk(self, frame):
         cv2.imwrite("images/frame_for_inference.jpg", frame)
 

@@ -78,10 +78,12 @@ def main(image_path, navigator_type, show_location=False, model_type="retina"):
         navigator = HierarchicalNavigator(env)
     # for inference
     model = Inferer(env.cfg, model_type)
+    
     for obs, info in navigator.navigate():
         # Process the observation
         # logging.info(f"Observation: {obs.shape}")
         # logging.info(f"info: {info}")
+        logging.info(f'info from env: {info}')
 
         log_location(model, obs, info, drone_info_dict)
 
@@ -128,7 +130,7 @@ def log_location(model, obs, info, drone_info_dict):
         with open("data_info.json", "w") as file:
             json.dump(drone_info_dict, file, indent=4)
 
-    # logging.info(f"Drone data: {drone_info_dict}")
+    logging.info(f"Drone data: {drone_info_dict}")
 
 
 def initialize_env(input_map, show_location):
