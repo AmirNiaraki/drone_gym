@@ -6,6 +6,7 @@ Training/Models/
 Training/Logs/
 images/
 myenv/
+input_images/
 flight_logs/
 __pycache__/
 **.pt

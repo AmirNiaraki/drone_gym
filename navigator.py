@@ -17,7 +17,8 @@ class HierarchicalNavigator(Navigator):
         super().__init__(env)
         self.phase='sampling' # sampling and CCPP (Complete Coverage Path Planning)
         self.edge_discretization_segments = 2 #number of devides per edge (so 2 for parameter means the image is divided into 4)
-        self.sampling_velocity=5 #m/s   
+        self.sampling_velocity=10 #m/s
+        self.score_per_step_dict = []
 
     def generate_planar_sampling_waypoints(self):
         # Generate (x,y) waypoints for sampling phase
@@ -70,10 +71,19 @@ class HierarchicalNavigator(Navigator):
 
             self.env.location = (self.env.cfg.init_location[0], self.env.cfg.init_location[1], self.env.cfg.WORLD_ZS[0])
             for i in range(len(way_points_3d)):
+                # self.score_per_step_dict['height'] = self.env.location[2]
+                # self.score_per_step_dict['start_step'] = self.env.step_count
+                step_info = {
+                    'height': self.env.location[2],
+                    'start_step': self.env.step_count
+                }
                 logging.info(f'current location: {self.env.location} going to wardd way point at {way_points_3d[i]}')
+
+
+                ### navigation peice from p1 to p2
                 direction=self.find_direction(self.env.location,way_points_3d[i])
                 logging.info(f'direction: {direction}')
-                time.sleep(5)
+                # time.sleep(1)
 
                 while True and self.env.done==False:
                     distance=self.calculate_distance(self.env.location,way_points_3d[i])
@@ -88,17 +98,36 @@ class HierarchicalNavigator(Navigator):
                         obs, reward, done, _, info = self.env.step([x, y, z])
                         # logging.info(f'location after step {info}')
                         yield obs, info
+                ### end of navigation starting postprocessing the outcome of the p1 to p2 navigation
+                step_info['end_step'] = self.env.step_count
+                self.calculate_score_per_step(step_info)
                 logging.info(f'waypoint number {i} reached, changing height by {height_interval}')
                 obs, reward, done, _, info = self.env.step([0, 0, height_interval])
-            logging.info('All waypoints reached; end of sampling phase')
+            logging.info(f'All waypoints reached; end of sampling. Finding the optimom altitude: {self.score_per_step_dict}')
+
             self.env.close()
 
         elif self.phase == 'CCPP':
             pass
         else:
             raise ValueError('Invalid phase')
-
-
+    
+    def calculate_score_per_step(self,step_info):
+        
+        start_step = step_info.get('start_step')
+        end_step = step_info.get('end_step')
+        average_score = 0
+        if start_step is not None and end_step is not None:
+            total_score = 0
+            step_count = 0
+            for info in self.env.info_list:
+                if start_step <= info['step_count'] <= end_step:
+                    total_score += info.get('detection_score')
+                    step_count += 1
+            average_score = total_score / step_count if step_count > 0 else 0
+            step_info['average_score'] = average_score
+            logging.info(f'Average score between steps {start_step} and {end_step} at height {step_info['height']}: {average_score}')
+            self.score_per_step_dict.append(step_info)
 
 class CompleteCoverageNavigator(Navigator):
     def __init__(self, env):

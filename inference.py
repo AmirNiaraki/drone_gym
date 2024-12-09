@@ -41,31 +41,34 @@ class Inferer:
         args:
             frame: a numpy array representing the frame
         returns:
-            boxes: a list of bounding boxes of the detected objects
+            score:  a score of the detected objects, 
+                    typically 0 for models that return bounding boxes and has a number when model is low_fidelity and boxes are returned as []
+            boxes:  a list of bounding boxes of the detected objects
+
         '''
         # TODO: remove the battery bar from frame entirely in the project
         # count the number of black pixels within the frame
         if self.model_type == "low_fidelity":
             # cv2.imwrite("images/frame_for_inference.jpg", frame)
             score = self.count_black_pixels(frame)
-            return [] # Not sure what to do here
+            return score, [] # Not sure what to do here
 
         if self.model_type == "retina":
             boxes, _ = self.model.infer(frame.copy())
             self.draw_boxes(frame, boxes)
             # cv2.imwrite("images/frame_for_inference.jpg", frame)
-            return boxes
+            return 0, boxes
 
         if self.model_type == "double_clustering":
             boxes, _ = self.model.infer(frame.copy())
             self.draw_boxes(frame, boxes)
             # cv2.imwrite("images/frame_for_inference.jpg", frame)
-            return boxes
+            return 0, boxes
 
     def count_black_pixels(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         black_pixels = gray.size - cv2.countNonZero(gray)
-        logging.info(f"Number of black pixels: {black_pixels}")
+        # logging.info(f"Number of black pixels: {black_pixels}")
         return black_pixels
 
 
