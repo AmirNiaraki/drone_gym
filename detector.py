@@ -122,7 +122,7 @@ class ClusteringDetector(BaseDetector):
     def preprocess(image):
         return image / 255
 
-    def predict(self, image):
+    def kmeans_predict(self, image):
         # used for clustering based on color
         x, y, z = image.shape
         img_2d = image.reshape(x * y, z)
@@ -130,6 +130,11 @@ class ClusteringDetector(BaseDetector):
 
         label_regions = np.where(cluster_labels.reshape(x, y) == self.selected_label)
         label_regions = np.asarray(label_regions).T
+        return label_regions
+
+    def predict(self, image):
+        # used for clustering based on color
+        label_regions = self.kmeans_predict(image)
 
         # used for the clustering based on localization
         boxes = []
@@ -165,8 +170,9 @@ class ClusteringDetector(BaseDetector):
 
 if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
-    image = cv2.imread("images/resize.png")
-    ClusteringDetector.fit_kmeans(image, n_clusters=4)
+    # image = cv2.imread("images/resize.png")
+    # ClusteringDetector.fit_kmeans(image, n_clusters=4)
+
     model = ClusteringDetector("weights/kmeans_model.pkl", selected_label=2)
     # Load your model
     # config = ModelConfig()
@@ -174,7 +180,7 @@ if __name__ == "__main__":
 
     # Load an image
     image = cv2.imread(
-        "images/NDVI/2021-7-13_field1_w0_h0.png"
+        "images/field1/field1.png"
     )
 
     # for visualization
@@ -184,9 +190,14 @@ if __name__ == "__main__":
             image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
         return image
 
+    image = model.preprocess(image)
+    print(image.shape)
+    exit()
+    model.kmeans_predict(image)
+
     # Run inference
-    boxes, _ = model.infer(image.copy())
-    result_image = draw_boxes(image, boxes)
-    cv2.imshow("image", image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # boxes, _ = model.infer(image.copy())
+    # result_image = draw_boxes(image, boxes)
+    # cv2.imshow("image", image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
