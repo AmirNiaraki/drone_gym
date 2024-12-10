@@ -123,7 +123,7 @@ class ClusteringDetector(BaseDetector):
     def preprocess(image):
         return image / 255
 
-    def segment_image(self, image, anomaly_label=3):
+    def segment_image(self, image, anomaly_label=3, save=True):
         x, y, z = image.shape
         img_2d = image.reshape(x * y, z)
         cluster_labels = self.kmeans_cluster.predict(img_2d)
@@ -134,6 +134,9 @@ class ClusteringDetector(BaseDetector):
 
         # Select a specific center and make it black
         segmented_image[cluster_labels.reshape(x, y) == anomaly_label] = [0, 0, 0]
+
+        if save:
+            cv2.imwrite("images/segmented_image.png", segmented_image * 255)
 
         return segmented_image
 
@@ -193,21 +196,26 @@ if __name__ == "__main__":
     # config = ModelConfig()
     # model = RetinaNetDetector(config, confidence_threshold=0.8)
 
-    # Load an image
-    image = cv2.imread(
-        "images/field1/field1.png"
-    )
-    image = image_resizer.resize_image(image, max_height=500)
+    for i in range(1, 13):
+        img_path = f"images/field{i}/field{i}.png"
+        # Load an image
+        # img_path = "images/field1/field1.png"
+        image = cv2.imread(img_path)
+        image = image_resizer.resize_image(image, max_height=5000)
 
-    # for visualization
-    def draw_boxes(image, boxes, color=(0, 255, 0)):
-        for box in boxes:
-            x1, y1, x2, y2 = map(int, box[:4])
-            image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
-        return image
+        # for visualization
+        def draw_boxes(image, boxes, color=(0, 255, 0)):
+            for box in boxes:
+                x1, y1, x2, y2 = map(int, box[:4])
+                image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+            return image
 
-    image = model.preprocess(image)
-    segment_image = model.segment_image(image)
+        image = model.preprocess(image)
+        segmented_image = model.segment_image(image, save=False)
+
+        SEG_PATH = img_path.replace(".png", "_segmented.png")
+        cv2.imwrite(SEG_PATH, segmented_image * 255)
+        print('done with', SEG_PATH)
 
     # segmented_image = model.cluster_centers[labels]
     # print(segmented_image.shape)
@@ -215,6 +223,6 @@ if __name__ == "__main__":
     # Run inference
     # boxes, _ = model.infer(image.copy())
     # result_image = draw_boxes(image, boxes)
-    cv2.imshow("image", segment_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.imshow("image", segment_image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
