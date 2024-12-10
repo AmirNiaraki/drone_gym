@@ -1,6 +1,7 @@
 import pickle
 import sys
 from abc import ABC, abstractmethod
+import image_resizer
 
 import cv2
 import numpy as np
@@ -122,6 +123,20 @@ class ClusteringDetector(BaseDetector):
     def preprocess(image):
         return image / 255
 
+    def segment_image(self, image, anomaly_label=3):
+        x, y, z = image.shape
+        img_2d = image.reshape(x * y, z)
+        cluster_labels = self.kmeans_cluster.predict(img_2d)
+
+        segmented_image = self.kmeans_cluster.cluster_centers_[cluster_labels].reshape(
+            x, y, z
+        )
+
+        # Select a specific center and make it black
+        segmented_image[cluster_labels.reshape(x, y) == anomaly_label] = [0, 0, 0]
+
+        return segmented_image
+
     def kmeans_predict(self, image):
         # used for clustering based on color
         x, y, z = image.shape
@@ -182,6 +197,7 @@ if __name__ == "__main__":
     image = cv2.imread(
         "images/field1/field1.png"
     )
+    image = image_resizer.resize_image(image, max_height=500)
 
     # for visualization
     def draw_boxes(image, boxes, color=(0, 255, 0)):
@@ -191,13 +207,14 @@ if __name__ == "__main__":
         return image
 
     image = model.preprocess(image)
-    print(image.shape)
-    exit()
-    model.kmeans_predict(image)
+    segment_image = model.segment_image(image)
+
+    # segmented_image = model.cluster_centers[labels]
+    # print(segmented_image.shape)
 
     # Run inference
     # boxes, _ = model.infer(image.copy())
     # result_image = draw_boxes(image, boxes)
-    # cv2.imshow("image", image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow("image", segment_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
