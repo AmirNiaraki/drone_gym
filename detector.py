@@ -1,6 +1,7 @@
 import pickle
 import sys
 from abc import ABC, abstractmethod
+import image_resizer
 
 import cv2
 import numpy as np
@@ -122,7 +123,24 @@ class ClusteringDetector(BaseDetector):
     def preprocess(image):
         return image / 255
 
-    def predict(self, image):
+    def segment_image(self, image, anomaly_label=3, save=True):
+        x, y, z = image.shape
+        img_2d = image.reshape(x * y, z)
+        cluster_labels = self.kmeans_cluster.predict(img_2d)
+
+        segmented_image = self.kmeans_cluster.cluster_centers_[cluster_labels].reshape(
+            x, y, z
+        )
+
+        # Select a specific center and make it black
+        segmented_image[cluster_labels.reshape(x, y) == anomaly_label] = [0, 0, 0]
+
+        if save:
+            cv2.imwrite("images/segmented_image.png", segmented_image * 255)
+
+        return segmented_image
+
+    def kmeans_predict(self, image):
         # used for clustering based on color
         x, y, z = image.shape
         img_2d = image.reshape(x * y, z)
@@ -130,6 +148,11 @@ class ClusteringDetector(BaseDetector):
 
         label_regions = np.where(cluster_labels.reshape(x, y) == self.selected_label)
         label_regions = np.asarray(label_regions).T
+        return label_regions
+
+    def predict(self, image):
+        # used for clustering based on color
+        label_regions = self.kmeans_predict(image)
 
         # used for the clustering based on localization
         boxes = []
@@ -165,28 +188,41 @@ class ClusteringDetector(BaseDetector):
 
 if __name__ == "__main__":
     # NOTE: This is used to train the kmeans model
-    image = cv2.imread("images/resize.png")
-    ClusteringDetector.fit_kmeans(image, n_clusters=4)
+    # image = cv2.imread("images/resize.png")
+    # ClusteringDetector.fit_kmeans(image, n_clusters=4)
+
     model = ClusteringDetector("weights/kmeans_model.pkl", selected_label=2)
     # Load your model
     # config = ModelConfig()
     # model = RetinaNetDetector(config, confidence_threshold=0.8)
 
-    # Load an image
-    image = cv2.imread(
-        "images/NDVI/2021-7-13_field1_w0_h0.png"
-    )
+    for i in range(1, 13):
+        img_path = f"images/field{i}/field{i}.png"
+        # Load an image
+        # img_path = "images/field1/field1.png"
+        image = cv2.imread(img_path)
+        image = image_resizer.resize_image(image, max_height=5000)
 
-    # for visualization
-    def draw_boxes(image, boxes, color=(0, 255, 0)):
-        for box in boxes:
-            x1, y1, x2, y2 = map(int, box[:4])
-            image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
-        return image
+        # for visualization
+        def draw_boxes(image, boxes, color=(0, 255, 0)):
+            for box in boxes:
+                x1, y1, x2, y2 = map(int, box[:4])
+                image = cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+            return image
+
+        image = model.preprocess(image)
+        segmented_image = model.segment_image(image, save=False)
+
+        SEG_PATH = img_path.replace(".png", "_segmented.png")
+        cv2.imwrite(SEG_PATH, segmented_image * 255)
+        print('done with', SEG_PATH)
+
+    # segmented_image = model.cluster_centers[labels]
+    # print(segmented_image.shape)
 
     # Run inference
-    boxes, _ = model.infer(image.copy())
-    result_image = draw_boxes(image, boxes)
-    cv2.imshow("image", image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # boxes, _ = model.infer(image.copy())
+    # result_image = draw_boxes(image, boxes)
+    # cv2.imshow("image", segment_image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
