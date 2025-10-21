@@ -16,7 +16,7 @@ class HierarchicalNavigator(Navigator):
     def __init__(self, env):
         super().__init__(env)
         self.phase='sampling' # sampling and CCPP (Complete Coverage Path Planning)
-        self.edge_discretization_segments = 2 #number of devides per edge (so 2 for parameter means the image is divided into 4)
+        self.edge_discretization_segments = 5 #number of devides per edge (so 2 for parameter means the image is divided into 4)
         self.sampling_velocity=10 #m/s
         self.score_per_step_dict = []
 
@@ -27,9 +27,15 @@ class HierarchicalNavigator(Navigator):
         segment_height=self.env.cfg.wolrd_size_including_padding[1]/self.edge_discretization_segments
         logging.info(f'segment width: {segment_width}, segment height: {segment_height}')
         waypoints=[]
+        segment_lines_x=[]
+        segment_lines_y=[]
         for i in range(self.edge_discretization_segments):
             for j in range(self.edge_discretization_segments):
-                waypoints.append((j*segment_width+segment_width/2,i*segment_height+segment_height/2))           
+                waypoints.append((j*segment_width+segment_width/2,i*segment_height+segment_height/2))
+                segment_lines_x.append(j*segment_width)
+                segment_lines_y.append(i*segment_height)
+        if self.env.cfg.save_map_to_file:
+            self.env.write_segments(segment_lines_x, segment_lines_y, self.edge_discretization_segments*self.edge_discretization_segments)
         return waypoints
 
     def generate_3d_sampling_waypoints(self, waypoints_2d):
@@ -103,7 +109,7 @@ class HierarchicalNavigator(Navigator):
                 self.calculate_score_per_step(step_info)
                 logging.info(f'waypoint number {i} reached, changing height by {height_interval}')
                 obs, reward, done, _, info = self.env.step([0, 0, height_interval])
-            logging.info(f'All waypoints reached; end of sampling. Finding the optimom altitude: {self.score_per_step_dict}')
+            logging.info(f'All waypoints reached; end of sampling. Finding the optimum altitude: {self.score_per_step_dict}')
 
             self.env.close()
 

@@ -13,5 +13,6 @@ __pycache__/
 **.pth
 **.log
 **.npy
+**.zip
 .DS_Store
 kmeans_model.pkl

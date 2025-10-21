@@ -27,49 +27,8 @@ for ep in range(episodes):
     while not done:
         action, _= model.predict(obs)
         obs, reward, done, _, info = env.step(action)
-        # x=env.x
-        # y=env.y
-        # world = env.world
-        # xs.append(x)
-        # ys.append(y)
-        # time.sleep(0.1)
+
         print(reward)
-
-    # with open(f"Testing/moves_{ep}.txt", "w") as file:
-    #     # Write the first list to the file
-    #     for item in xs:
-    #         file.write(str(item) + " ")
-    #     file.write("\n")
-        
-    #     # Write the second list to the file
-    #     for item in ys:
-    #         file.write(str(item) + " ")
-    #     file.write("\n")
-
-# with open('./Testing/idx.txt', 'w') as f:
-#     for num in idxs:
-#         f.write(str(num) + '\n')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 models_dir = f"Training/Models/{int(time.time())}/"
 logdir = f"Training/Logs/{int(time.time())}/"

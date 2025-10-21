@@ -53,7 +53,7 @@ root.addHandler(handler)
 class droneEnv(gymnasium.Env):
 
     def __init__(
-        self, observation_mode, action_mode, render=False, img_path="images/sample2.png"
+        self, observation_mode, action_mode, render=False, img_path="images/field7_RGB_resized_resized.png"
     ):
         # super(droneEnv, self).__init__()
         super().__init__()
@@ -448,6 +448,7 @@ class droneEnv(gymnasium.Env):
         if self.cfg.save_map_to_file and self.cfg.create_explored_map:
             self.map_of_detections()
             self.show_write_explored_map()
+            # self.write_segments()
 
 
 
@@ -481,17 +482,34 @@ class droneEnv(gymnasium.Env):
             )
             if self.path[i - 1][2] > self.path[i][2]:
                 self.explored_map = cv2.circle(
-                    self.explored_map, end_point, 10, (255, 0, 0), -1)
+                    self.explored_map, end_point, 20, (255, 0, 0), -1)
             elif self.path[i - 1][2] < self.path[i][2]:
                 self.explored_map = cv2.circle(
-                    self.explored_map, end_point, 5, (0, 255, 0), -1)
-        output_name = self.image_path.split(".")[0] + "_path.png"
+                    self.explored_map, end_point, 20, (0, 255, 0), -1)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        output_name = self.image_path.split(".")[0] + "_path_" + timestamp + ".png"
         # showing the output image for 5 seconds before saving to file
         cv2.imshow(" Resulted Path", self.explored_map)
         cv2.waitKey(5000)
         cv2.destroyAllWindows()
         cv2.imwrite(output_name, self.explored_map)
 
+    def write_segments(self, xs, ys, num):
+        img=self.world.copy()
+        xs=[int(x) for x in xs]
+        ys=[int(y) for y in ys]
+        for i in range(1, len(xs)):
+            start = (xs[i], 0)
+            end = (xs[i], img.shape[0])
+            img = cv2.line(img,start,end,(110,0,110),20)
+        for i in range(1, len(ys)):
+            start = (0, ys[i])
+            end = (img.shape[1], ys[i])
+            img = cv2.line(img,start,end,(110,0,110),20)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        output_name = self.image_path.split(".")[0] + "_" + str(num) + "_segments_" + timestamp + ".png"
+        cv2.imwrite(output_name, img)
+        logging.info(f"Segments saved to {output_name}")
 
     def map_of_detections(self):
         for element in self.info_list:
@@ -504,7 +522,8 @@ class droneEnv(gymnasium.Env):
                 self.explored_map = cv2.rectangle(
                     self.explored_map, (X1, Y1), (X2, Y2), (0, 0, 255), 2
                 )
-        output_name = self.image_path.split(".")[0] + "_detections.png"
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        output_name = self.image_path.split(".")[0] + "_detections_" + timestamp + ".png"
         cv2.imwrite(output_name, self.explored_map)
         logging.info(f"Map of detections saved to {output_name}")
 
