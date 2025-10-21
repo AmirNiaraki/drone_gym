@@ -240,6 +240,8 @@ drone_gym/
 ├── inference.py               # Detection inference engine
 ├── configurations.py          # Environment configuration
 ├── model_loader.py            # Model loading utilities
+├── image_resizer.py           # Image preprocessing utilities
+├── plots.py                   # Flight data visualization
 ├── drawer.py                  # Interactive world creation
 ├── dronelearn.py             # RL training script
 ├── test_model.py             # Model testing
@@ -247,7 +249,7 @@ drone_gym/
 ├── pytorch-retinanet/        # RetinaNet implementation
 ├── weights/                   # Pre-trained models
 ├── images/                    # Sample images and worlds
-├── input_images/             # Training datasets
+├── input_images/             # Training datasets (field1-field12)
 ├── flight_logs/              # Flight data logs
 └── requirements.txt          # Dependencies
 ```
@@ -334,6 +336,9 @@ model.save('trained_agent')
 # Train double-clustering detector (available for research)
 python detector.py
 
+# Process multiple field images (field1-field12)
+# Automatically generates segmented images for each field
+
 # Note: RetinaNet training requires proprietary datasets
 # Contact authors for access to pre-trained models
 ```
@@ -364,10 +369,14 @@ while not done:
 # Analyze flight data
 python main.py --is_post_process
 
+# Visualize flight performance
+python plots.py
+
 # This generates:
 # - output.png: Image with detection overlays
 # - data_info.json: Flight telemetry
 # - flight_logs/: Detailed flight data
+# - Performance plots: Step counts and detection scores over time
 ```
 
 ## 📊 Results
@@ -465,6 +474,8 @@ detector = Inferer(env.cfg, model_type="custom")
 - **Simulation Environment**: The core Gymnasium environment is open source
 - **Double-clustering Detection**: Available for research and development
 - **Navigation Algorithms**: Keyboard control and complete coverage implementations
+- **Data Visualization**: Flight performance plotting and analysis tools
+- **Image Processing**: Resizing and preprocessing utilities
 
 ### Proprietary Components
 
@@ -480,7 +491,7 @@ detector = Inferer(env.cfg, model_type="custom")
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-**Note**: Contributions should focus on the open-source simulation environment and double-clustering detection methods.
+**Note**: Contributions should focus on the open-source simulation environment, double-clustering detection methods, and data visualization tools.
 
 ## 📚 Citation
 
