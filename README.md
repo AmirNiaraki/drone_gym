@@ -30,11 +30,15 @@ The environmen is consructed such that the navigation module and perception modu
 <tr>
 <td align="center">
 <img src="sample%20images/NDVI.png" alt="NDVI filtered image of grass fields" height="200">
-<p><em>Pixelated World with 20 Seeds</em></p>
+<p><em>NDVI filtered image of grass fields</em></p>
 </td>
 <td align="center">
 <img src="sample%20images/world_20241109-131120_seed200.png" alt="Pixelated World - 200 Seeds" height="200">
 <p><em>Pixelated World with 200 Seeds</em></p>
+</td>
+<td align="center">
+<img src="sample%20images/Retina.png" alt="Anomaly detection Retina-net" height="200">
+<p><em>Anomaly detection with retina net</em></p>
 </td>
 </tr>
 </table>
