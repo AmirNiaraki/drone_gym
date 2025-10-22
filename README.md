@@ -1,61 +1,63 @@
-# Drone Gym: A Simulation Environment for Power and Perception-aware 3D Path Planning with Reinforcement Learning
+# Drone Gym
 
-A Gymnasium-compatible simulation environment built on stable-baselines3 for training and evaluating reinforcement learning algorithms for autonomous drone path planning. This environment supports the IP4 (Integrated Power and Perception Path Planning) framework for aerial detection of organic objects in non-exhaustively searchable survey areas.
+_A Simulation Environment for Power and Perception-aware 3D Path Planning with Reinforcement Learning_
 
-## 🎯 Overview
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<img src="sample%20images/CCPP.gif" alt="Complete Coverage Path Planning" height="200">
+<p><em>Complete Coverage Path Planning (CCPP)</em></p>
+</td>
+<td align="center">
+<img src="sample%20images/IP4_exploring.gif" alt="IP4 Path Planning" height="200">
+<p><em>IP4 Path Planning</em></p>
+</td>
+</tr>
+</table>
+</div>
+
+A Gymnasium-compatible simulation environment built on stable-baselines3 for training and evaluating reinforcement learning algorithms for autonomous drone path planning. This environment supports our IP4 (Integrated Power and Perception Path Planning) framework for aerial detection of organic objects in non-exhaustively searchable survey areas.
+
+<div align="center">
+<img src="sample%20images/RL%20structure%20drone%20gym.png" alt="Drone Gym Architecture" height="300">
+</div>
+
+The environmen is consructed such that the navigation module and perception module work asyncronously. So the environment can be used to generate a random or pixel world for Perception module first can operate on this low-fidelity environment with desired reward distribution. Then the target map can be replaced with real world geotiffs and perception module can be replaced with otehr object detection models of choice. Here, a double-clustering method and a DL method are implemented
+
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<img src="sample%20images/NDVI.png" alt="NDVI filtered image of grass fields" height="200">
+<p><em>Pixelated World with 20 Seeds</em></p>
+</td>
+<td align="center">
+<img src="sample%20images/world_20241109-131120_seed200.png" alt="Pixelated World - 200 Seeds" height="200">
+<p><em>Pixelated World with 200 Seeds</em></p>
+</td>
+</tr>
+</table>
+</div>
+
+Which then can be replaced with actual NIR imagery of fields:
+
+## ✨ Key Features
 
 This simulation environment provides a comprehensive framework for developing and testing drone path planning algorithms. The environment includes:
 
 - **Gymnasium-compatible RL environment** with discrete and continuous action spaces
 - **Physics-based flight dynamics** with wind field integration and battery constraints
-- **Multiple navigation strategies** including keyboard control and complete coverage path planning
+- **Multiple navigation strategies** including keyboard control and complete coverage path planning, Hierarchical Method and Actor-Critic Reinforcement learning
 - **Object detection integration** supporting RetinaNet, clustering-based, and low-fidelity detection methods
-- **Real-time visualization** with OpenCV for monitoring drone behavior
 
 The environment was designed for agricultural anomaly detection using Near-Infrared (NIR) imaging, but can be adapted for various aerial surveillance and exploration tasks.
-
-## 🌍 World Generation and Reward System
-
-### Pixelated World Environment
-
-The simulation includes a **world generator** that creates synthetic environments for training and testing:
-
-- **Random Seed Generation**: Creates black pixel targets (anomalies) on white background
-- **Configurable World Size**: Customizable dimensions and target density
-- **Reward System**: Black pixel detection as reward signal for RL training
-- **Physics Integration**: Wind-aware navigation with realistic drag modeling
-
-### Reward Mechanism
-
-The environment uses a **black pixel counting reward system**:
-
-- **Detection Reward**: Number of black pixels in drone's field of view
-- **Power Cost**: Battery consumption based on wind conditions and movement
-- **Coverage Reward**: Positive reward for visiting new areas
-- **Duplicate Penalty**: Negative reward for revisiting locations
-
-This pixelated world approach allows for:
-
-- **Rapid Training**: Fast simulation without real-world data requirements
-- **Scalable Testing**: Easy generation of diverse scenarios
-- **Research Flexibility**: Adaptable to different target detection tasks
-
-## ✨ Key Features
-
-- **🚁 Multiple Navigation Modes**: A2C RL policy (`dronelearn.py`),Complete Coverage (`CCdrone.py`) and Keyboard control (`keyboard_player.py`)
-- **🧠 Detection Model Integration**: Low-fidelity simulation, RetinaNet, and Double-clustering methods
-- **🌪️ Wind-Aware Physics**: Realistic drag modeling based on wind conditions and flight dynamics
-- **🔋 Battery Constraints**: Power-aware navigation with configurable battery limits
-- **📊 Real-time Visualization**: OpenCV-based monitoring with detection overlays
-- **🎮 Interactive Testing**: Keyboard-based manual navigation for algorithm validation
-
-## 🛠️ Advanced Usage
 
 For advanced configuration, training, and troubleshooting, see the **[Getting Started Guide](GETTING_STARTED.md)**.
 
 ## 🤝 Contributing
 
-This simulation environment is designed for research and educational purposes. The environment operates on a **pixelated world** where the reward is based on detecting black pixels on a white background of custom size. The double-clustering detection method can be implemented on other NIR datasets for research use. For access to proprietary datasets, pre-trained RL and object detection models, or collaboration opportunities, please contact the authors. Ensure compliance with local aviation regulations when deploying in real-world scenarios.
+This simulation environment is designed for research and educational purposes. The environment is ready to use on a **pixelated world** where the reward is based on detecting black pixels on a white background of custom size. The double-clustering detection method can be implemented on other NIR datasets for research use. For access to proprietary datasets, pre-trained RL and object detection models, or collaboration opportunities, please contact the authors. Ensure compliance with local aviation regulations when deploying in real-world scenarios.
 
 ## 📚 Citation
 
